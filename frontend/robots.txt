@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /landlord.html
+Disallow: /profile.html
+
+Sitemap: https://keja.co.ke/sitemap.xml

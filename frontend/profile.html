@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Keja — Profile</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="api-config.js"></script>
+<link rel="stylesheet" href="keja.css">
+<style>
+  .profile-hero { display:flex; align-items:center; gap: 14px; margin-bottom: 20px; }
+  .profile-hero .keja-avatar { width: 64px; height: 64px; font-size: 24px; }
+  .profile-name { font-size: 19px; font-weight: 800; }
+  .profile-sub { font-size: 13.5px; color: var(--text-secondary); }
+  .menu-row { display:flex; align-items:center; justify-content:space-between; background: var(--card); border:1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; font-weight:600; font-size:14.5px; }
+  .menu-row .chev { color: var(--text-muted); }
+  .referral-card { background: var(--primary-light); border-radius: var(--radius-md); padding: 16px; margin-bottom: 18px; }
+  .referral-card .code { font-family: monospace; font-weight:700; font-size:16px; background: var(--card); padding: 8px 12px; border-radius: 8px; margin: 10px 0; display:flex; align-items:center; justify-content:space-between; }
+</style>
+</head>
+<body>
+<div class="keja-page">
+  <div class="profile-hero">
+    <div class="keja-avatar" id="avatar">?</div>
+    <div><div class="profile-name" id="pName">—</div><div class="profile-sub" id="pEmail">—</div></div>
+  </div>
+
+  <div class="referral-card" id="referralCard" style="display:none">
+    <div style="font-weight:700">Refer a friend, earn a free contact unlock 🎁</div>
+    <div class="profile-sub">Share your code — once a friend signs up, you get 1 free landlord-contact unlock.</div>
+    <div class="code"><span id="refCode">—</span><button class="keja-btn ghost" id="copyRefBtn" style="width:auto;padding:6px 12px">Copy link</button></div>
+  </div>
+
+  <div class="menu-row" id="creditsRow" style="display:none">
+    <span>Free contact credits</span>
+    <span id="creditsCount" style="color:var(--primary)">0</span>
+  </div>
+
+  <a class="menu-row" href="landlord.html"><span>My listings (landlord)</span><span class="chev">›</span></a>
+  <a class="menu-row" href="interested.html"><span>Interested properties</span><span class="chev">›</span></a>
+
+  <div class="keja-theme-toggle" style="margin: 16px 0">
+    <span>Dark mode</span>
+    <div class="keja-switch" id="themeSwitch"><div class="dot"></div></div>
+  </div>
+
+  <a class="menu-row" href="terms.html"><span>Terms of service</span><span class="chev">›</span></a>
+  <a class="menu-row" href="privacy.html"><span>Privacy policy</span><span class="chev">›</span></a>
+
+  <button class="keja-btn secondary" id="logoutBtn" style="margin-top: 10px; color:#ef4444">Log out</button>
+</div>
+
+<script src="keja-app.js"></script>
+<script src="profile.js"></script>
+</body>
+</html>

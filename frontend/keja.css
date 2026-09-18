@@ -1,0 +1,308 @@
+/* ============================================================
+   Keja design system.
+   Tokens are the exact values from the modification spec's
+   "Color System" section — kept as CSS custom properties so
+   light/dark mode is a single attribute flip, not two stylesheets.
+   ============================================================ */
+
+:root {
+    --primary: #6C4DFF;
+    --primary-dark: #5137D9;
+    --primary-light: #EEE9FF;
+
+    --green: #22C55E;
+    --green-light: #DCFCE7;
+    --green-dark: #15803D;
+
+    --orange: #F59E0B;
+    --orange-light: #FEF3C7;
+
+    --font-sans: Inter, "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --nav-height: 64px;
+}
+
+:root[data-theme="light"] {
+    --bg: #F8F8FC;
+    --card: #FFFFFF;
+    --text: #17171C;
+    --text-secondary: #6B6B76;
+    --text-muted: #9A9AA5;
+    --border: #E8E8EF;
+    --shadow: 0 8px 24px rgba(23, 23, 28, 0.06);
+}
+
+:root[data-theme="dark"] {
+    --bg: #0D0D12;
+    --card: #17171F;
+    --card-elevated: #1E1E28;
+    --text: #F7F7FA;
+    --text-secondary: #B5B5C2;
+    --text-muted: #777785;
+    --border: #292934;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    padding-bottom: calc(var(--nav-height) + 12px);
+    min-height: 100vh;
+}
+
+a { text-decoration: none; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+
+.keja-page {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 18px 16px 8px;
+}
+
+/* ---------- Header ---------- */
+.keja-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.keja-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+}
+.keja-brand svg { color: var(--primary); }
+.keja-greeting { font-size: 14px; color: var(--text-secondary); margin: 2px 0 0; }
+.keja-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--primary-light); color: var(--primary-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; border: 1px solid var(--border);
+    overflow: hidden;
+}
+.keja-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Search ---------- */
+.keja-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 13px 16px;
+    box-shadow: var(--shadow);
+}
+.keja-search input {
+    border: none; outline: none; background: transparent;
+    width: 100%; font-size: 15px; color: var(--text);
+}
+.keja-search input::placeholder { color: var(--text-muted); }
+.keja-search svg { color: var(--text-muted); flex: none; }
+
+/* ---------- Sections ---------- */
+.keja-section { margin-top: 26px; }
+.keja-section-title {
+    font-size: 16px; font-weight: 700; margin: 0 0 12px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.keja-section-title a { font-size: 13px; font-weight: 600; color: var(--primary); }
+.keja-hscroll {
+    display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: none;
+}
+.keja-hscroll::-webkit-scrollbar { display: none; }
+.keja-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ---------- Property card ---------- */
+.keja-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    flex: none;
+}
+.keja-hscroll .keja-card { width: 200px; }
+.keja-card-img {
+    width: 100%; aspect-ratio: 4/3; background: var(--primary-light);
+    background-size: cover; background-position: center;
+    position: relative;
+}
+.keja-card-badge {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(23,23,28,0.55); color: #fff;
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+}
+.keja-card-badge.booked { background: var(--orange); color: #1a1a1a; }
+.keja-card-body { padding: 10px 12px 12px; }
+.keja-price { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.keja-type { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-top: 2px; }
+.keja-location { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.keja-proximity {
+    display: inline-block; margin-top: 6px; font-size: 11.5px; font-weight: 600;
+    color: var(--primary-dark); background: var(--primary-light);
+    padding: 3px 8px; border-radius: 999px;
+}
+
+/* ---------- Ad slot ---------- */
+.keja-ad {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    background: var(--card);
+    display: flex; flex-direction: column; gap: 4px;
+    margin-top: 22px;
+}
+.keja-ad-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); }
+.keja-ad-body { font-size: 13px; color: var(--text-secondary); }
+
+/* ---------- Bottom nav ---------- */
+.keja-bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: var(--nav-height);
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 40;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.keja-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; color: var(--text-muted); font-size: 11px; font-weight: 600;
+}
+.keja-nav-item.active { color: var(--primary); }
+
+/* ---------- Buttons ---------- */
+.keja-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--primary); color: #fff; border: none;
+    border-radius: var(--radius-sm); padding: 13px 18px;
+    font-weight: 700; font-size: 15px; cursor: pointer;
+    width: 100%;
+}
+.keja-btn:active { background: var(--primary-dark); }
+.keja-btn.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.keja-btn.success { background: var(--green); }
+.keja-btn.ghost { background: transparent; color: var(--primary); }
+.keja-btn:disabled { opacity: 0.55; cursor: default; }
+
+.keja-field { margin-bottom: 14px; }
+.keja-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.keja-field input, .keja-field select, .keja-field textarea {
+    width: 100%; border: 1px solid var(--border); background: var(--card);
+    border-radius: var(--radius-sm); padding: 12px 14px; font-size: 15px; color: var(--text);
+}
+.keja-field textarea { resize: vertical; min-height: 90px; }
+
+/* ---------- Modal ---------- */
+.keja-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(10,10,14,0.5);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100;
+}
+.keja-modal {
+    background: var(--card); width: 100%; max-width: 480px;
+    border-radius: 20px 20px 0 0; padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0));
+    box-shadow: var(--shadow);
+}
+@media (min-width: 620px) {
+    .keja-modal-backdrop { align-items: center; }
+    .keja-modal { border-radius: var(--radius-lg); }
+}
+.keja-modal h3 { margin: 0 0 6px; font-size: 18px; }
+.keja-modal p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.keja-till-box {
+    background: var(--orange-light); border-radius: var(--radius-sm);
+    padding: 12px 14px; margin: 14px 0; font-size: 14px;
+}
+.keja-till-box b { font-family: monospace; font-size: 16px; }
+
+/* ---------- Discover / swipe ---------- */
+.keja-swipe-stage {
+    position: relative;
+    height: calc(100vh - var(--nav-height) - 150px);
+    max-height: 640px;
+    margin-top: 8px;
+}
+.keja-swipe-card {
+    position: absolute; inset: 0;
+    border-radius: 24px; overflow: hidden;
+    background-size: cover; background-position: center;
+    box-shadow: var(--shadow);
+    display: flex; align-items: flex-end;
+    touch-action: none;
+    user-select: none;
+}
+.keja-swipe-card-info {
+    width: 100%; padding: 22px 18px;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0));
+    color: #fff;
+}
+.keja-swipe-card-info .keja-price { color: #fff; font-size: 24px; }
+.keja-swipe-card-info .keja-type { color: rgba(255,255,255,0.9); }
+.keja-swipe-card-info .keja-location { color: rgba(255,255,255,0.75); }
+.keja-swipe-stamp {
+    position: absolute; top: 26px; padding: 6px 16px; font-weight: 800; font-size: 20px;
+    border: 3px solid; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;
+    opacity: 0; transition: opacity .1s;
+}
+.keja-swipe-stamp.right { right: 20px; color: var(--green); border-color: var(--green); transform: rotate(8deg); }
+.keja-swipe-stamp.left { left: 20px; color: #ef4444; border-color: #ef4444; transform: rotate(-8deg); }
+.keja-swipe-hint {
+    text-align: center; color: var(--text-muted); font-size: 12.5px; margin-top: 14px;
+}
+.keja-swipe-empty {
+    text-align: center; padding: 60px 20px; color: var(--text-secondary);
+}
+
+/* ---------- Gallery ---------- */
+.keja-gallery { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: var(--radius-md); }
+.keja-gallery img { scroll-snap-align: start; width: 100%; flex: none; aspect-ratio: 4/3; object-fit: cover; }
+
+.keja-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.keja-detail-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+.keja-detail-item .k { font-size: 11.5px; color: var(--text-muted); }
+.keja-detail-item .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+
+.keja-status-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-block; }
+.keja-status-pill.available { background: var(--green-light); color: var(--green-dark); }
+.keja-status-pill.booked { background: var(--orange-light); color: #92400e; }
+
+.keja-empty { text-align: center; padding: 50px 16px; color: var(--text-secondary); }
+.keja-toast {
+    position: fixed; left: 50%; bottom: calc(var(--nav-height) + 18px); transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px;
+    font-size: 13.5px; font-weight: 600; z-index: 200; box-shadow: var(--shadow);
+}
+
+.keja-theme-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px; font-size: 14px; font-weight: 600;
+}
+.keja-switch { width: 42px; height: 24px; border-radius: 999px; background: var(--border); position: relative; cursor: pointer; }
+.keja-switch.on { background: var(--primary); }
+.keja-switch .dot { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+.keja-switch.on .dot { left: 21px; }
+
+.keja-listing-row { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; margin-bottom: 10px; }
+.keja-listing-row img { width: 74px; height: 74px; border-radius: var(--radius-sm); object-fit: cover; background: var(--primary-light); }

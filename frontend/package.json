@@ -1,0 +1,15 @@
+{
+  "name": "keja",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19",
+    "wrangler": "^4.113.0"
+  }
+}

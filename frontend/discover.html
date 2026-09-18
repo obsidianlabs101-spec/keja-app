@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Keja — Discover</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="api-config.js"></script>
+<link rel="stylesheet" href="keja.css">
+<style>
+  .discover-header { display:flex; align-items:center; justify-content:space-between; }
+  .discover-header h1 { font-size: 20px; margin: 0; }
+  .filter-btn {
+    width: 38px; height: 38px; border-radius: 50%; background: var(--card);
+    border: 1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .filter-sheet .keja-field { margin-bottom: 12px; }
+  .filter-row { display:flex; gap: 10px; }
+  .filter-row .keja-field { flex: 1; }
+</style>
+</head>
+<body>
+<div class="keja-page">
+  <div class="discover-header">
+    <h1>Discover</h1>
+    <div class="filter-btn" id="filterBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <div class="keja-swipe-stage" id="stage">
+    <div class="keja-swipe-empty" id="emptyState" style="display:none">
+      <p>You've seen every listing that matches your filters 🎉</p>
+      <button class="keja-btn secondary" id="resetFiltersBtn" style="margin-top:10px">Clear filters</button>
+    </div>
+  </div>
+  <p class="keja-swipe-hint">Swipe right to save · left to skip · up to view details</p>
+</div>
+
+<div id="filterModal" style="display:none">
+  <div class="keja-modal-backdrop" id="filterBackdrop">
+    <div class="keja-modal filter-sheet">
+      <h3>Filters</h3>
+      <div class="keja-field">
+        <label>County</label>
+        <select id="fCounty"><option value="">Any county</option></select>
+      </div>
+      <div class="keja-field"><label>Area / estate</label><input type="text" id="fArea" placeholder="e.g. Kasarani"></div>
+      <div class="filter-row">
+        <div class="keja-field"><label>Min price (KES)</label><input type="number" id="fMin" min="0"></div>
+        <div class="keja-field"><label>Max price (KES)</label><input type="number" id="fMax" min="0"></div>
+      </div>
+      <div class="keja-field">
+        <label>Property type</label>
+        <select id="fType">
+          <option value="">Any type</option>
+          <option>Bedsitter</option>
+          <option>1 Bedroom</option>
+          <option>2 Bedroom</option>
+          <option>3 Bedroom</option>
+          <option>Studio</option>
+          <option>Airbnb</option>
+        </select>
+      </div>
+      <button class="keja-btn" id="applyFiltersBtn">Apply filters</button>
+      <button class="keja-btn ghost" id="closeFiltersBtn" style="margin-top:8px">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="keja-app.js"></script>
+<script src="kenya-locations.js"></script>
+<script src="discover.js"></script>
+</body>
+</html>

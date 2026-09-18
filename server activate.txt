@@ -1,0 +1,14 @@
+.\venv\Scripts\Activate.ps1
+==THEN==
+uvicorn app.main:app --host 192.168.100.210 --port 8005 --reload 
+==THEN==
+python -m http.server 8000 --bind 0.0.0.0
+==THEN==on browser
+http://192.168.100.210:8000/frontend/index.html
+
+venv\Scripts\Activate.ps1
+   uvicorn app.main:app --host YOUR_NEW_IP --port 8005 --reload
+
+
+
+

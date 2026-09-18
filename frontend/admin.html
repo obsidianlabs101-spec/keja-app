@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="vibe-theme.js"></script>
+<script src="api-config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BASH // Admin Suite</title>
+    <style>
+        /* ========================================================
+           DESIGN TOKENS
+        ======================================================== */
+        :root {
+            --bg-base: #05070d;
+            --bg-elev-1: #0b1120;
+            --bg-elev-2: #111a2e;
+            --bg-surface: rgba(15, 22, 41, 0.72);
+            --bg-card: rgba(20, 29, 51, 0.6);
+            --bg-inset: rgba(0, 0, 0, 0.25);
+
+            --text-main: #f1f5f9;
+            --text-soft: #cbd5e1;
+            --text-muted: #64748b;
+
+            --accent-primary: #ff5a3c;
+            --accent-primary-2: #ff8a5c;
+            --accent-orange: #ffb020;
+            --accent-cyan: #00e5ff;
+            --accent-success: #22c55e;
+            --accent-danger: #ef4444;
+            --accent-purple: #7c5cff;
+
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-strong: rgba(255, 255, 255, 0.12);
+
+            --glow-primary: rgba(255, 90, 60, 0.28);
+            --glow-cyan: rgba(0, 229, 255, 0.18);
+
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+
+            --transition-smooth: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            --sidebar-w: 250px;
+            --topbar-h: 72px;
+
+            --mesh-1: rgba(124, 92, 255, 0.35);
+            --mesh-2: rgba(255, 90, 60, 0.35);
+        }
+
+        [data-theme="light"] {
+            --bg-base: #f4f6fb;
+            --bg-elev-1: #ffffff;
+            --bg-elev-2: #f8fafc;
+            --bg-surface: rgba(255, 255, 255, 0.85);
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --bg-inset: rgba(15, 23, 42, 0.04);
+
+            --text-main: #0f172a;
+            --text-soft: #334155;
+            --text-muted: #64748b;
+
+            --border-color: rgba(15, 23, 42, 0.08);
+            --border-strong: rgba(15, 23, 42, 0.14);
+
+            --mesh-1: rgba(255, 90, 60, 0.18);
+            --mesh-2: rgba(124, 92, 255, 0.14);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg-base);
+            color: var(--text-main);
+            overflow: hidden;
+            position: relative;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            width: 520px; height: 520px;
+            border-radius: 50%;
+            filter: blur(160px);
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.55;
+            animation: ambientFloat 14s infinite alternate ease-in-out;
+        }
+        body::before { background: var(--mesh-1); top: -12%; left: -8%; }
+        body::after  { background: var(--mesh-2); bottom: -12%; right: -8%; animation-delay: -7s; }
+        @keyframes ambientFloat { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(80px, 50px) scale(1.18); } }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* ========================================================
+           SHELL LAYOUT: SIDEBAR + TOPBAR + WORKSPACE
+        ======================================================== */
+        .suite-shell {
+            display: grid;
+            grid-template-columns: var(--sidebar-w) 1fr;
+            grid-template-rows: var(--topbar-h) 1fr;
+            grid-template-areas:
+                "sidebar topbar"
+                "sidebar workspace";
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* -------- Sidebar -------- */
+        .suite-sidebar {
+            grid-area: sidebar;
+            background: var(--bg-surface);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem 0.9rem;
+            gap: 0.5rem;
+            overflow-y: auto;
+        }
+        .brand-block {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.5rem 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 0.75rem;
+        }
+        .brand-mark {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-orange));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 900; letter-spacing: 0.5px;
+            box-shadow: 0 10px 25px var(--glow-primary);
+        }
+        .brand-copy { line-height: 1.15; }
+        .brand-copy .name { font-size: 1rem; font-weight: 900; letter-spacing: 1.5px; color: var(--text-main); }
+        .brand-copy .role { font-size: 0.62rem; font-weight: 700; letter-spacing: 2.5px; color: var(--accent-orange); text-transform: uppercase; margin-top: 2px; }
+
+        .nav-section-label {
+            font-size: 0.62rem; font-weight: 800; letter-spacing: 2px;
+            color: var(--text-muted); text-transform: uppercase;
+            padding: 0.75rem 0.9rem 0.35rem;
+        }
+
+        .nav-btn {
+            display: flex; align-items: center; gap: 0.8rem;
+            width: 100%;
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: var(--text-soft) !important;
+            padding: 0.75rem 0.9rem !important;
+            font-size: 0.88rem !important;
+            font-weight: 600 !important;
+            text-align: left;
+            cursor: pointer;
+            border-radius: var(--radius-md) !important;
+            transition: var(--transition-smooth) !important;
+            appearance: none; -webkit-appearance: none;
+            position: relative;
+        }
+        .nav-btn .nav-ico {
+            width: 22px; height: 22px; display: inline-flex;
+            align-items: center; justify-content: center;
+            font-size: 1rem; opacity: 0.85;
+        }
+        .nav-btn:hover {
+            color: var(--text-main) !important;
+            background: rgba(255,255,255,0.04) !important;
+        }
+        .nav-btn.active {
+            color: var(--text-main) !important;
+            background: linear-gradient(135deg, rgba(255,90,60,0.18), rgba(255,138,92,0.08)) !important;
+            border-color: rgba(255,90,60,0.35) !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .nav-btn.active::before {
+            content: '';
+            position: absolute; left: -0.9rem; top: 25%; bottom: 25%;
+            width: 3px; border-radius: 3px;
+            background: linear-gradient(180deg, var(--accent-primary), var(--accent-orange));
+            box-shadow: 0 0 12px var(--glow-primary);
+        }
+        .nav-btn .nav-badge {
+            margin-left: auto;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            border-radius: 999px;
+            background: #ff5a3c;
+            color: #fff;
+            font-size: 0.65rem; font-weight: 800;
+            display: none;
+            align-items: center; justify-content: center;
+            box-shadow: 0 0 8px rgba(255,90,60,0.6);
+        }
+        .nav-btn .nav-badge.show { display: inline-flex; }
+
+        /* ---- WhatsApp-style two-pane layout (Cuto + Support Desk) ---- */
+        .wa-shell {
+            display: flex;
+            height: calc(100vh - 170px);
+            min-height: 420px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg, 14px);
+            overflow: hidden;
+        }
+        .wa-sidebar {
+            width: 300px; flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            background: var(--bg-inset, rgba(0,0,0,0.15));
+        }
+        .wa-sidebar-head {
+            padding: 1rem 1.1rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 800; font-size: 0.95rem;
+        }
+        .wa-sidebar-list { flex: 1; overflow-y: auto; }
+        .wa-sidebar-row {
+            display: flex; align-items: center; gap: 0.7rem;
+            padding: 0.75rem 1.1rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.15s ease;
+        }
+        .wa-sidebar-row:hover { background: rgba(255,255,255,0.04); }
+        .wa-sidebar-row.active { background: rgba(255,90,60,0.12); }
+        .wa-sidebar-avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-orange));
+            color: #fff; font-weight: 800; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .wa-sidebar-meta { min-width: 0; flex: 1; }
+        .wa-sidebar-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wa-sidebar-sub { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wa-sidebar-badge {
+            min-width: 20px; height: 20px; padding: 0 5px;
+            border-radius: 999px; background: var(--accent-primary); color: #fff;
+            font-size: 0.68rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .wa-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .wa-main-head {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 800;
+        }
+        .wa-main-body { flex: 1; overflow-y: auto; padding: 1.25rem; }
+        .wa-main-empty { color: var(--text-muted); text-align: center; padding: 3rem 1rem; font-size: 0.85rem; }
+        .wa-main-footer { border-top: 1px solid var(--border-color); padding: 0.85rem 1.1rem; display: flex; gap: 0.6rem; }
+        .wa-back-btn { display: none; } /* shown only on mobile once a thread is open — see 640px query */
+
+        /* ---- Refunds / Events review nav tabs ---- */
+        .subnav-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+        .subnav-tab {
+            padding: 0.55rem 1rem; border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: transparent; color: var(--text-soft);
+            font-size: 0.8rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 0.4rem;
+        }
+        .subnav-tab.active {
+            background: linear-gradient(135deg, rgba(255,90,60,0.2), rgba(255,138,92,0.1));
+            border-color: rgba(255,90,60,0.4); color: var(--text-main);
+        }
+        .subnav-tab .tab-count {
+            background: rgba(255,255,255,0.1); border-radius: 999px;
+            padding: 0.05rem 0.5rem; font-size: 0.72rem;
+        }
+        .refund-name-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 0.9rem; border-radius: 10px;
+            background: rgba(0,0,0,0.2); cursor: pointer; margin-bottom: 0.5rem;
+        }
+        .refund-name-row:hover { background: rgba(255,255,255,0.05); }
+        .refund-detail-panel {
+            margin-top: 0.6rem; padding: 1rem; border-radius: 10px;
+            background: rgba(0,0,0,0.25); border: 1px solid var(--border-color);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.75rem;
+        }
+        .admin-pill {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-size: 0.78rem; color: var(--text-soft); font-weight: 600;
+        }
+        .admin-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 800; font-size: 0.85rem;
+        }
+        .theme-toggle-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 38px; height: 38px; border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: var(--transition-smooth);
+        }
+        .theme-toggle-btn:hover {
+            transform: scale(1.08) rotate(15deg);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px var(--glow-primary);
+        }
+
+        /* -------- Topbar -------- */
+        .suite-topbar {
+            grid-area: topbar;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2rem;
+            background: rgba(11, 17, 32, 0.35);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        [data-theme="light"] .suite-topbar { background: rgba(255,255,255,0.6); }
+        .topbar-title {
+            display: flex; flex-direction: column; line-height: 1.15;
+        }
+        .topbar-title .eyebrow {
+            font-size: 0.62rem; font-weight: 800; letter-spacing: 2.5px;
+            color: var(--accent-orange); text-transform: uppercase;
+        }
+        .topbar-title h1 {
+            font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em;
+            color: var(--text-main); margin-top: 3px;
+        }
+        .topbar-actions { display: flex; align-items: center; gap: 0.85rem; }
+        .kbd-hint {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.4rem 0.7rem; border-radius: 999px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-muted); font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent-success); box-shadow: 0 0 10px var(--accent-success);
+            animation: pulseDot 1.8s infinite;
+        }
+        @keyframes pulseDot { 50% { opacity: 0.55; } }
+
+        /* -------- Workspace -------- */
+        .workspace {
+            grid-area: workspace;
+            position: relative;
+            overflow: hidden;
+        }
+        .page-view {
+            display: none;
+            width: 100%; height: 100%;
+            padding: 2rem 2.25rem 2.5rem;
+            overflow-y: auto;
+            opacity: 0; transform: translateY(8px);
+            transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1);
+        }
+        .page-view.active { display: block !important; opacity: 1; transform: translateY(0); }
+
+        /* ========================================================
+           SEGMENTED SUB-TABS (Verification filters — replaces flyout)
+        ======================================================== */
+        .segmented-bar {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.35rem;
+            border-radius: 999px;
+            width: fit-content;
+            margin-bottom: 1.5rem;
+        }
+        .sidebar-pill-btn {
+            display: inline-flex; align-items: center; gap: 0.55rem;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            padding: 0.55rem 1.1rem;
+            font-size: 0.82rem; font-weight: 700;
+            cursor: pointer;
+            border-radius: 999px;
+            transition: var(--transition-smooth);
+        }
+        .sidebar-pill-btn:hover { color: var(--text-main); }
+        .sidebar-pill-btn.active {
+            color: var(--text-main);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-2));
+            box-shadow: 0 6px 15px var(--glow-primary);
+        }
+        .pill-counter-badge {
+            font-size: 0.7rem; font-weight: 800;
+            padding: 0.1rem 0.5rem;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.25);
+            color: var(--text-soft);
+            border: 1px solid var(--border-color);
+        }
+        .sidebar-pill-btn.active .pill-counter-badge {
+            background: rgba(255,255,255,0.2); color: #fff; border-color: transparent;
+        }
+
+        /* ========================================================
+           GRIDS & PANELS
+        ======================================================== */
+        .host-grid {
+            display: grid !important;
+            grid-template-columns: 2fr 1fr !important;
+            gap: 1.75rem !important;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        .host-grid.shifted-layout { grid-template-columns: 1fr !important; padding: 0; }
+        .host-grid.host-grid-2col { grid-template-columns: 1fr 1fr !important; }
+
+        .host-form, .host-preview {
+            background: var(--bg-surface);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            transition: var(--transition-smooth);
+        }
+        .host-form:hover, .host-preview:hover { border-color: var(--border-strong); }
+        .support-desk-card { height: min(72vh, 620px); }
+        @media (max-width: 640px) { .support-desk-card { height: min(76vh, 520px); } }
+        .host-form h2, .host-preview h2 {
+            font-size: 0.9rem; font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 1.25rem;
+            letter-spacing: 1.2px; text-transform: uppercase;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .host-form h2::before, .host-preview h2::before {
+            content: ''; width: 6px; height: 18px; border-radius: 3px;
+            background: linear-gradient(180deg, var(--accent-primary), var(--accent-orange));
+            box-shadow: 0 0 10px var(--glow-primary);
+        }
+
+        .ticket-summary {
+            background: var(--bg-inset);
+            border: 1px solid var(--border-color);
+            padding: 1.1rem 1.35rem;
+            border-radius: var(--radius-md);
+        }
+        .ticket-summary p {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.9rem; color: var(--text-muted);
+        }
+
+        .scrollable-list {
+            display: flex; flex-direction: column;
+            gap: 0.75rem; width: 100%;
+        }
+        .list-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1.1rem 1.35rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: var(--transition-smooth);
+        }
+        .list-item:hover {
+            transform: translateX(4px);
+            background: var(--bg-surface);
+            border-color: rgba(255,90,60,0.35);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .search-container { width: 100%; margin-bottom: 1.25rem; position: relative; }
+        .search-input {
+            width: 100%;
+            padding: 0.95rem 1.25rem !important;
+            background: var(--bg-inset) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: var(--radius-md) !important;
+            color: var(--text-main) !important;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+        .broadcast-audience-btn.active {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-2));
+            color: #fff;
+        }
+        .search-input:focus {
+            border-color: var(--accent-primary) !important;
+            box-shadow: 0 0 0 4px rgba(255,90,60,0.12);
+        }
+
+        /* ========================================================
+           MODAL / DETAIL
+        ======================================================== */
+        .detail-overlay {
+            position: fixed; inset: 0;
+            background: rgba(3, 5, 12, 0.65);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            z-index: 10000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        .detail-overlay.active { opacity: 1; pointer-events: auto; }
+        .detail-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-strong);
+            width: 95%; max-width: 600px;
+            border-radius: var(--radius-xl);
+            padding: 2.75rem 2.25rem;
+            position: relative;
+            transform: scale(0.95) translateY(15px);
+            transition: var(--transition-smooth);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.35);
+        }
+        .detail-overlay.fullscreen-modal { background: var(--bg-base); }
+        .detail-overlay.fullscreen-modal .detail-card {
+            width: 100vw; height: 100vh; max-width: 100%;
+            border-radius: 0; border: none;
+            padding: 5rem 3rem;
+            transform: scale(1) translateY(0);
+            overflow-y: auto;
+        }
+        .detail-overlay.active .detail-card { transform: scale(1) translateY(0); }
+
+        .close-x {
+            position: absolute; top: 1.25rem; right: 1.25rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-soft);
+            font-size: 1.15rem;
+            width: 36px; height: 36px; border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--transition-smooth);
+        }
+        .close-x:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.1);
+            transform: rotate(90deg);
+        }
+
+        .exit-approve { transform: scale(0.9) translate(100vw, -30vh) !important; opacity: 0; }
+        .exit-reject  { transform: scale(0.9) translate(-100vw, 30vh) !important; opacity: 0; }
+
+        .media-viewport {
+            width: 100%; height: 240px;
+            background: #000;
+            border-radius: var(--radius-lg);
+            margin: 1.25rem 0;
+            overflow: hidden;
+            position: relative;
+            cursor: zoom-in;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.25);
+            transition: var(--transition-smooth);
+        }
+        .media-viewport img, .media-viewport video {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.6s cubic-bezier(0.16,1,0.3,1);
+        }
+        .media-viewport:hover img, .media-viewport:hover video { transform: scale(1.04); }
+        .media-badge {
+            position: absolute; bottom: 1rem; left: 1rem;
+            background: var(--bg-base);
+            backdrop-filter: blur(8px);
+            padding: 0.45rem 0.9rem;
+            border-radius: 10px;
+            font-size: 0.82rem; font-weight: 800;
+            color: var(--accent-primary);
+            border: 1px solid var(--border-color);
+        }
+        .media-viewport.fullscreen-media {
+            position: fixed !important; inset: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 20000;
+            cursor: zoom-out;
+            margin: 0; border-radius: 0;
+        }
+
+        .btn-group { display: flex; gap: 0.9rem; margin-top: 1.75rem; }
+        .action-btn {
+            flex: 1;
+            padding: 0.95rem 1.1rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem; font-weight: 800;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-2));
+            color: #fff;
+        }
+        .btn-approve:hover { box-shadow: 0 10px 25px var(--glow-primary); transform: translateY(-2px); }
+        .btn-reject {
+            background: transparent;
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
+        }
+        .btn-reject:hover {
+            background: rgba(239,68,68,0.1);
+            color: var(--accent-danger);
+            border-color: var(--accent-danger);
+            transform: translateY(-2px);
+        }
+
+        /* ========================================================
+           FINANCIALS — split cards
+        ======================================================== */
+        .financial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.75rem;
+            max-width: 1100px;
+            width: 100%;
+            margin: 3rem auto 0;
+        }
+        .floating-financial-card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 3.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .floating-financial-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(255,90,60,0.15), transparent 60%);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .floating-financial-card h2 {
+            color: var(--text-main); font-size: 1.4rem; font-weight: 800;
+            letter-spacing: -0.01em; transition: var(--transition-smooth);
+            position: relative;
+        }
+        .floating-financial-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 40px 80px var(--glow-primary);
+        }
+        .floating-financial-card:hover h2 { color: var(--accent-primary); }
+
+        .avatar-circle {
+            width: 84px; height: 84px; border-radius: 50%;
+            border: 2px solid var(--accent-primary);
+            margin-bottom: 1.1rem;
+            object-fit: cover;
+            box-shadow: 0 0 22px var(--glow-primary);
+        }
+
+        /* Deadline states */
+        .deadline-btn.locked {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed; box-shadow: none;
+        }
+        .deadline-btn.active {
+            background: linear-gradient(135deg, var(--accent-success), #58e08a);
+            color: #05130a; cursor: pointer;
+        }
+        .deadline-btn.closed {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--accent-success);
+            color: var(--accent-success);
+            cursor: default;
+        }
+
+        /* Hidden but preserved for legacy JS references */
+        .hover-sidebar-container { display: none !important; }
+
+        /* Hamburger drawer toggle — only ever shown on phones (see breakpoint below) */
+        .mobile-nav-toggle {
+            display: none;
+            flex: 0 0 auto;
+            width: 38px; height: 38px; border-radius: var(--radius-sm);
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-main); font-size: 1.1rem; cursor: pointer;
+            align-items: center; justify-content: center;
+        }
+        .nav-drawer-scrim {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 9997;
+        }
+
+        /* ========================================================
+           RESPONSIVE
+        ======================================================== */
+        /* Tablet — collapse the sidebar to an icon-only rail */
+        @media (max-width: 960px) {
+            :root { --sidebar-w: 72px; }
+            .brand-copy, .nav-btn span:not(.nav-ico), .admin-pill span, .nav-section-label {
+                display: none;
+            }
+            .nav-btn { justify-content: center; padding: 0.85rem !important; }
+            .brand-block { justify-content: center; padding: 0.5rem 0 1rem; }
+            .sidebar-footer { flex-direction: column; }
+            .host-grid { grid-template-columns: 1fr !important; }
+            .financial-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Phone — sidebar becomes a full off-canvas drawer, everything stacks
+           to a single column, and paddings shrink to fit a small screen. */
+        @media (max-width: 640px) {
+            :root { --topbar-h: 62px; }
+
+            .mobile-nav-toggle { display: inline-flex; }
+
+            .suite-shell {
+                grid-template-columns: 1fr;
+                grid-template-areas: "topbar" "workspace";
+            }
+
+            /* Sidebar is pulled out of the grid flow entirely and becomes a
+               fixed slide-in drawer, restored to its full (labelled) width
+               regardless of the tablet icon-rail rules above. */
+            .suite-sidebar {
+                position: fixed; top: 0; left: 0; bottom: 0;
+                width: min(80vw, 290px);
+                z-index: 9998;
+                transform: translateX(-100%);
+                transition: transform 0.32s cubic-bezier(0.16,1,0.3,1);
+                box-shadow: 25px 0 60px rgba(0,0,0,0.45);
+            }
+            .suite-shell.mobile-nav-open .suite-sidebar { transform: translateX(0); }
+            .suite-shell.mobile-nav-open .nav-drawer-scrim { display: block; }
+
+            .brand-copy, .nav-btn span:not(.nav-ico), .admin-pill span, .nav-section-label {
+                display: revert !important;
+            }
+            .nav-btn { justify-content: flex-start; padding: 0.75rem 0.9rem !important; }
+            .brand-block { justify-content: flex-start; padding: 0.5rem 0.75rem 1.25rem; }
+            .sidebar-footer { flex-direction: row; }
+
+            .suite-topbar { padding: 0 0.9rem; }
+            .topbar-title h1 { font-size: 1.02rem; }
+            .topbar-title .eyebrow { font-size: 0.58rem; }
+            .topbar-actions { gap: 0.5rem; }
+            .topbar-actions .kbd-hint:last-child { display: none; } /* "v2.0 · Suite" — desktop-only clutter */
+
+            .page-view { padding: 1.1rem 0.85rem 2rem; }
+
+            /* Every 2-column layout — including the ones that used to be
+               locked with an inline !important — collapses to one column. */
+            .host-grid,
+            .host-grid.host-grid-2col,
+            .financial-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1.1rem !important;
+            }
+            .financial-grid { margin-top: 1.5rem; }
+            .floating-financial-card { padding: 2.25rem 1.25rem; }
+
+            .segmented-bar { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .sidebar-pill-btn { flex: 0 0 auto; white-space: nowrap; }
+
+            .list-item { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+            .btn-group { flex-direction: column; }
+
+            .detail-card { width: 92%; padding: 2rem 1.15rem; max-height: 88vh; overflow-y: auto; }
+            .detail-overlay.fullscreen-modal .detail-card { padding: 3.5rem 1.25rem; }
+            .media-viewport { height: 190px; }
+
+            /* Broadcast form's type + reference-code row — was a bare inline
+               2-col grid with no mobile handling; collapses to one column. */
+            .broadcast-meta-row { grid-template-columns: 1fr !important; }
+
+            /* Support Desk — mobile-only WhatsApp behavior: the two-pane
+               split (fine on desktop, per the brief) becomes a single view
+               that shows the host list OR the open chat, never both at
+               once, with a Back button to return to the list. Desktop
+               (.wa-shell rules above) is untouched. */
+            .wa-shell { height: calc(100vh - 150px); border-radius: 12px; }
+            .wa-sidebar { width: 100%; border-right: 0; }
+            .wa-main { display: none; }
+            .wa-back-btn { display: none; }
+            .wa-shell.thread-open .wa-sidebar { display: none; }
+            .wa-shell.thread-open .wa-main { display: flex; }
+            .wa-shell.thread-open .wa-back-btn { display: inline-flex; }
+            .wa-main-head { display: flex; align-items: center; gap: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Legacy element kept so JS references remain intact -->
+    <div class="hover-sidebar-container" id="verification-sidebar-nav" aria-hidden="true"></div>
+
+    <div class="suite-shell" id="suite-shell-root">
+
+        <!-- Tap outside the drawer to close it (mobile only) -->
+        <div class="nav-drawer-scrim" onclick="closeMobileNav()"></div>
+
+        <!-- =============== SIDEBAR =============== -->
+        <aside class="suite-sidebar">
+            <div class="brand-block">
+                <div class="brand-mark">B</div>
+                <div class="brand-copy">
+                    <div class="name">BASH</div>
+                    <div class="role">Admin Suite</div>
+                </div>
+            </div>
+
+            <div class="nav-section-label">Operations</div>
+            <button class="nav-btn active" onclick="switchPage('verifications', this)">
+                <span class="nav-ico">👤</span><span>Host Verification</span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('events', this)">
+                <span class="nav-ico">🎟️</span><span>Events Uploaded</span><span class="nav-badge" id="nav-badge-events"></span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('manual-payments', this)">
+                <span class="nav-ico">🔁</span><span>Manual Payments</span><span class="nav-badge" id="nav-badge-manualpay"></span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('duplicate-guard', this)">
+                <span class="nav-ico">🪪</span><span>Duplicate Guard</span><span class="nav-badge" id="nav-badge-dupguard"></span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('adder', this)">
+                <span class="nav-ico">➕</span><span>Adder</span>
+            </button>
+
+            <div class="nav-section-label">Growth</div>
+            <button class="nav-btn" onclick="switchPage('referral-gate', this)">
+                <span class="nav-ico">🎁</span><span>Referral Gate</span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('analytics', this)">
+                <span class="nav-ico">📈</span><span>Analytics</span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('usergrowth', this)">
+                <span class="nav-ico">📶</span><span>User Growth</span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('broadcasts', this)">
+                <span class="nav-ico">📡</span><span>Broadcasts</span>
+            </button>
+            <button class="nav-btn" onclick="switchPage('support', this)">
+                <span class="nav-ico">💬</span><span>Support Desk</span>
+            </button>
+
+            <div class="sidebar-footer">
+                <div class="admin-pill">
+                    <div class="admin-avatar" id="adminAvatarTrigger" title="">A</div>
+                    <span>Admin</span>
+                </div>
+                <button class="theme-toggle-btn" id="theme-switcher-node" onclick="toggleThemeEngine()" title="Toggle theme">☀️</button>
+                <button class="theme-toggle-btn" id="admin-logout-btn" onclick="adminLogout()" title="Log out">🚪</button>
+            </div>
+        </aside>
+
+        <!-- =============== TOPBAR =============== -->
+        <header class="suite-topbar">
+            <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                <button class="mobile-nav-toggle" id="mobile-nav-toggle-btn" onclick="toggleMobileNav()" aria-label="Open menu">☰</button>
+                <div class="topbar-title">
+                    <span class="eyebrow" id="topbar-eyebrow">Operations</span>
+                    <h1 id="topbar-page-title">Host Verification</h1>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="kbd-hint"><span class="status-dot"></span> Live</span>
+                <span class="kbd-hint">v2.0 · Suite</span>
+            </div>
+        </header>
+
+        <!-- =============== WORKSPACE =============== -->
+        <main class="workspace">
+
+            <!-- PAGE 1: HOST VERIFICATIONS -->
+            <section id="page-verifications" class="page-view active">
+                <div class="segmented-bar" role="tablist" aria-label="Verification filters">
+                    <button class="sidebar-pill-btn active" id="filter-pending-btn" onclick="switchVerificationFilter('pending')">
+                        <span>Pending</span>
+                        <span class="pill-counter-badge" id="badge-pending-count">0</span>
+                    </button>
+                    <button class="sidebar-pill-btn" id="filter-approved-btn" onclick="switchVerificationFilter('approved')">
+                        <span>Approved</span>
+                        <span class="pill-counter-badge" id="badge-approved-count">0</span>
+                    </button>
+                    <button class="sidebar-pill-btn" id="filter-rejected-btn" onclick="switchVerificationFilter('rejected')">
+                        <span>Rejected</span>
+                        <span class="pill-counter-badge" id="badge-rejected-count">0</span>
+                    </button>
+                </div>
+
+                <div class="host-grid shifted-layout">
+                    <div class="host-form">
+                        <h2 id="verification-panel-title">Pending Applications</h2>
+                        <div id="verifications-list" class="scrollable-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 2: EVENTS UPLOADED -->
+            <section id="page-events" class="page-view">
+                <div class="subnav-tabs">
+                    <button class="subnav-tab active" id="events-tab-unreviewed" onclick="switchEventsTab('unreviewed')">
+                        Not Reviewed <span class="tab-count" id="events-tab-count-unreviewed">0</span>
+                    </button>
+                    <button class="subnav-tab" id="events-tab-reviewed" onclick="switchEventsTab('reviewed')">
+                        Reviewed <span class="tab-count" id="events-tab-count-reviewed">0</span>
+                    </button>
+                    <button class="subnav-tab" id="events-tab-community" onclick="switchEventsTab('community')">
+                        Community Posts <span class="tab-count" id="events-tab-count-community">0</span>
+                    </button>
+                </div>
+
+                <div id="events-tab-panel-events">
+                    <div class="host-grid">
+                        <div class="host-form">
+                            <h2>Platform Events Portfolio</h2>
+                            <div class="search-container">
+                                <input type="text" id="event-search" class="search-input" placeholder="Search events by title…" oninput="handleEventSearch(event)">
+                            </div>
+                            <div id="events-list" class="scrollable-list"></div>
+                        </div>
+                        <div class="host-preview">
+                            <h2>Live Telemetry</h2>
+                            <div class="ticket-summary">
+                                <p><span>Total Active Gatherings</span> <strong id="metric-events-count" style="color: var(--accent-primary); font-weight:800; text-shadow: 0 0 12px var(--glow-primary);">0</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="events-tab-panel-community" style="display:none;">
+                    <div class="host-grid shifted-layout">
+                        <div class="host-form">
+                            <h2>Community Posts</h2>
+                            <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">Posts from the Cheki community feed (not tied to a host's own event). Opening one marks it seen; Revoke pulls it off the feed for good.</p>
+                            <div id="community-posts-list" class="scrollable-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 2b: COMMUNITY POST DETAIL (rendered into global modal, see admin.js) -->
+
+            <!-- PAGE 3: SPLIT FINANCIAL VAULT -->
+            <section id="page-financials" class="page-view">
+                <div id="financials-gate" style="max-width: 420px; margin: 2.5rem auto; text-align:center;">
+                    <div style="font-size:2rem; margin-bottom:0.5rem;">🔒</div>
+                    <h2 style="margin-bottom:0.4rem;">Financial Access Locked</h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.25rem;">This page is restricted to verified admins. Enter the financial access password to continue.</p>
+                    <form id="financials-gate-form" style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <input type="password" id="financials-gate-password" class="search-input" placeholder="Financial access password" autocomplete="off" required>
+                        <button type="submit" class="action-btn btn-approve" style="width:100%;">Unlock Financials</button>
+                    </form>
+                    <p id="financials-gate-error" style="color:#ff6b6b; font-size:0.8rem; margin-top:0.75rem; display:none;"></p>
+                </div>
+
+                <div id="financials-content" style="display:none;">
+                    <div class="financial-grid">
+                        <div class="floating-financial-card" onclick="openFinancialDetail('host')">
+                            <h2>Host Financials</h2>
+                            <p style="color: var(--text-muted); margin-top: 0.65rem; font-size: 0.9rem;">Due distributions & host messaging</p>
+                        </div>
+                        <div class="floating-financial-card" onclick="openFinancialDetail('company')">
+                            <h2>Bash Financials</h2>
+                            <p style="color: var(--text-muted); margin-top: 0.65rem; font-size: 0.9rem;">Platform revenue collections</p>
+                        </div>
+                        <div class="floating-financial-card" onclick="openCutoActivityLog()">
+                            <h2>Cuto</h2>
+                            <p style="color: var(--text-muted); margin-top: 0.65rem; font-size: 0.9rem;">Admin activity — who did what, when, and time spent in the panel</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 4: PAYOUT REQUESTS -->
+            <section id="page-payouts" class="page-view">
+                <div class="host-grid shifted-layout">
+                    <div class="host-form">
+                        <h2>Pending Payout Requests</h2>
+                        <div id="payouts-list" class="scrollable-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 4b: REFUNDS -->
+            <section id="page-refunds" class="page-view">
+                <div class="subnav-tabs">
+                    <button class="subnav-tab active" id="refunds-tab-requested" onclick="switchRefundsTab('requested')">
+                        Requested <span class="tab-count" id="refunds-tab-count-requested">0</span>
+                    </button>
+                    <button class="subnav-tab" id="refunds-tab-paid" onclick="switchRefundsTab('paid')">
+                        Paid <span class="tab-count" id="refunds-tab-count-paid">0</span>
+                    </button>
+                </div>
+
+                <div id="refunds-events-panel">
+                    <div class="host-grid shifted-layout">
+                        <div class="host-form">
+                            <h2 id="refunds-events-title">Events with refunds requested</h2>
+                            <div id="refunds-events-list" class="scrollable-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="refunds-event-detail-panel" style="display:none;">
+                    <button class="action-btn" style="width:auto; margin-bottom:1rem;" onclick="closeRefundEventDetail()">← Back to events</button>
+                    <div class="host-grid shifted-layout">
+                        <div class="host-form">
+                            <h2 id="refunds-event-detail-title">Refunds for event</h2>
+                            <div id="refunds-event-detail-list" class="scrollable-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="host-preview" style="margin-top:1.5rem;">
+                    <h2>Archive a Refund Message</h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">Paste the M-Pesa confirmation message the buyer sent in when asking for a refund. We'll pull out the name, phone, code, and amount and file it — tag it with their BASH username below if you have it, so it's easy to find later.</p>
+                    <textarea id="refund-message-input" rows="4" class="search-input" style="width:100%; resize:vertical; margin-bottom:0.6rem;" placeholder="e.g. QGH7XXXXX Confirmed. Ksh500.00 received from JOHN KAMAU 0712345678 on 17/7/26 at 2:30 PM..."></textarea>
+                    <input type="text" id="refund-username-input" class="search-input" style="width:100%; margin-bottom:0.75rem;" placeholder="BASH username (optional) — e.g. @johnkamau">
+                    <button class="action-btn btn-approve" id="refund-archive-btn" style="width:100%;" onclick="submitRefundArchive()">Archive Refund Message</button>
+                    <p id="refund-archive-msg" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;"></p>
+
+                    <button type="button" class="action-btn" id="refund-archive-toggle-btn" style="width:100%; margin-top:2rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;" onclick="toggleRefundArchiveSearch()" aria-expanded="false" aria-controls="refund-archive-search-section">
+                        <span id="refund-archive-toggle-icon">🔍</span>
+                        <span id="refund-archive-toggle-label">Search the Refund Archive</span>
+                    </button>
+                    <div id="refund-archive-search-section" style="display:none; margin-top:1rem;">
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">Search by BASH username or name to see whether — and exactly when — a refund message for them was logged.</p>
+                        <input type="text" id="refund-search-input" class="search-input" style="width:100%; margin-bottom:0.75rem;" placeholder="Search by username or name...">
+                        <div id="refund-search-results" class="scrollable-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 4b-ii: MANUAL PAYMENTS (STK fallback / admin toggle) -->
+            <section id="page-manual-payments" class="page-view">
+                <div class="host-grid">
+                    <div class="host-form">
+                        <h2>Manual Payment Mode</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                            When ON, buyers pay the Till directly instead of getting an STK prompt, then paste
+                            their M-Pesa code below for you to match. STK also falls back to this automatically,
+                            per booking, any time a real STK push fails — even while this is OFF.
+                        </p>
+
+                        <div id="manualpay-status-card" style="border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem; border: 1px solid var(--border-color, rgba(255,255,255,0.08));">
+                            <p style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.4rem;">Current state</p>
+                            <p id="manualpay-status-label" style="font-size: 1.25rem; font-weight: 700;">Loading…</p>
+                            <p id="manualpay-status-updated" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;"></p>
+                        </div>
+
+                        <button type="button" class="action-btn btn-approve" id="manualpay-toggle-btn" style="width:100%;" onclick="toggleManualPaymentMode()">
+                            Loading…
+                        </button>
+                        <p id="manualpay-toggle-msg" style="font-size:0.8rem; color: var(--text-muted); margin-top:0.5rem;"></p>
+                    </div>
+                </div>
+
+                <div class="host-preview" style="margin-top:1.5rem;">
+                    <h2>Match Codes From the Till Statement</h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">
+                        Paste the real M-Pesa confirmation messages (or just the bare codes) copied from the
+                        Till statement — one per line, or separated by a blank line if pasting full SMS text.
+                        Anything that matches a buyer's claimed code + amount finalizes their ticket right away;
+                        the rest waits here for a buyer's claim to catch up to it.
+                    </p>
+                    <textarea id="manualpay-batch-input" rows="6" class="search-input" style="width:100%; resize:vertical; margin-bottom:0.6rem;" placeholder="QGH7XXXXX Confirmed. Ksh500.00 received from JOHN KAMAU 0712345678 on 17/7/26 at 2:30 PM...&#10;&#10;RTS8YYYYY Confirmed. Ksh1,200.00 received from JANE WANJIRU..."></textarea>
+                    <button class="action-btn btn-approve" id="manualpay-batch-btn" style="width:100%;" onclick="submitManualPaymentBatchMatch()">Match Codes</button>
+                    <p id="manualpay-batch-msg" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;"></p>
+                </div>
+
+                <div class="host-preview" style="margin-top:1.5rem;">
+                    <h2>Awaiting Match <span class="tab-count" id="manualpay-pending-count">0</span></h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">
+                        Bookings still waiting on either the buyer's code or a match against the statement.
+                    </p>
+                    <div id="manualpay-pending-list" class="scrollable-list"></div>
+                </div>
+            </section>
+
+            <!-- PAGE: REFERRAL GATE — off by default; when off, free events
+                 are simply bookable with no referral/coins requirement and
+                 no padlocks shown anywhere. Turning it on brings back the
+                 original mechanic exactly as it was. -->
+            <section id="page-referral-gate" class="page-view">
+                <div class="host-grid">
+                    <div class="host-form">
+                        <h2>Referral Gate (Free Event Coins)</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                            When ON, booking a free event costs one referral credit, and free events show a
+                            padlock until someone unlocks them by getting a friend to sign up — the original
+                            mechanic. When OFF (the default), free events are simply bookable — no credits,
+                            no padlocks, referring a friend becomes optional and happens after booking instead.
+                        </p>
+
+                        <div id="referralgate-status-card" style="border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem; border: 1px solid var(--border-color, rgba(255,255,255,0.08));">
+                            <p style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.4rem;">Current state</p>
+                            <p id="referralgate-status-label" style="font-size: 1.25rem; font-weight: 700;">Loading…</p>
+                            <p id="referralgate-status-updated" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;"></p>
+                        </div>
+
+                        <button type="button" class="action-btn btn-approve" id="referralgate-toggle-btn" style="width:100%;" onclick="toggleReferralGate()">
+                            Loading…
+                        </button>
+                        <p id="referralgate-toggle-msg" style="font-size:0.8rem; color: var(--text-muted); margin-top:0.5rem;"></p>
+                    </div>
+                </div>
+            </section>
+            <section id="page-duplicate-guard" class="page-view">
+                <div class="host-preview">
+                    <h2>Pending Verification Photos <span class="tab-count" id="dupguard-pending-count">0</span></h2>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">
+                        Approve only if the photo is clearly a real person's face — this is what unlocks Saka's
+                        roulette mode for them and what a host sees at the Live Gate to verify a ticket holder.
+                    </p>
+                    <div id="dupguard-pending-list" class="scrollable-list"></div>
+                </div>
+            </section>
+
+            <!-- PAGE 4b-iv: ADDER (platform-wide category/town/location options) -->
+            <section id="page-adder" class="page-view">
+                <div class="host-grid">
+                    <div class="host-form">
+                        <h2>Add an Option</h2>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.25rem;">
+                            Adds to the existing built-in options everywhere they're shown — never replaces them.
+                            Kenya's county/constituency list stays exactly as it is; "Town" and "Location" here are
+                            for supplementing it with named spots that aren't part of the official list.
+                        </p>
+
+                        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">Type</label>
+                        <select id="adder-entry-type" class="search-input" style="width:100%; margin-bottom:0.85rem;">
+                            <option value="category">Category</option>
+                            <option value="town">Town</option>
+                            <option value="location">Location (a specific spot)</option>
+                        </select>
+
+                        <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">Value</label>
+                        <input type="text" id="adder-value" class="search-input" style="width:100%; margin-bottom:0.85rem;" placeholder="e.g. Comedy Night" />
+
+                        <div id="adder-parent-town-row" style="display:none;">
+                            <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">Which town is this in? (optional)</label>
+                            <input type="text" id="adder-parent-town" class="search-input" style="width:100%; margin-bottom:0.85rem;" placeholder="e.g. Kilimani" />
+                        </div>
+
+                        <button type="button" class="action-btn btn-approve" id="adder-submit-btn" style="width:100%;" onclick="submitAdderEntry()">Add</button>
+                        <p id="adder-submit-msg" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;"></p>
+                    </div>
+                </div>
+
+                <div class="host-preview" style="margin-top:1.5rem;">
+                    <h2>Current Options</h2>
+                    <div class="subnav-tabs" style="margin-bottom:0.85rem;">
+                        <button type="button" class="subnav-tab active" data-adder-filter="category" onclick="switchAdderFilter('category', this)">Categories</button>
+                        <button type="button" class="subnav-tab" data-adder-filter="town" onclick="switchAdderFilter('town', this)">Towns</button>
+                        <button type="button" class="subnav-tab" data-adder-filter="location" onclick="switchAdderFilter('location', this)">Locations</button>
+                    </div>
+                    <div id="adder-list" class="scrollable-list"></div>
+                </div>
+            </section>
+
+            <!-- PAGE 5a: BROADCASTS -->
+            <section id="page-broadcasts" class="page-view">
+                <div class="host-grid">
+                    <div class="host-form">
+                        <h2>Issue Global Broadcast</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                            Transmit system-wide operational alerts directly onto all active host landing walls.
+                        </p>
+
+                        <form id="admin-broadcast-form" style="display: flex; flex-direction: column; gap: 0.9rem;">
+                            <div id="broadcast-audience-filter" style="display:flex; gap:0.5rem; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:10px; padding:0.3rem;">
+                                <button type="button" class="broadcast-audience-btn active" data-audience="organisers" style="flex:1; padding:0.5rem 0.4rem; border-radius:7px; border:none; background:transparent; color:var(--text-main); font-size:0.8rem; font-weight:600; cursor:pointer;">Organisers</button>
+                                <button type="button" class="broadcast-audience-btn" data-audience="all" style="flex:1; padding:0.5rem 0.4rem; border-radius:7px; border:none; background:transparent; color:var(--text-main); font-size:0.8rem; font-weight:600; cursor:pointer;">All</button>
+                                <button type="button" class="broadcast-audience-btn" data-audience="community" style="flex:1; padding:0.5rem 0.4rem; border-radius:7px; border:none; background:transparent; color:var(--text-main); font-size:0.8rem; font-weight:600; cursor:pointer;">Community</button>
+                            </div>
+                            <input type="hidden" id="broadcast-audience" value="organisers">
+
+                            <input type="text" id="broadcast-title" class="search-input" placeholder="Broadcast title (e.g., Payout Processing Lag)" required>
+                            <textarea id="broadcast-body" class="search-input" placeholder="Enter full advisory details for hosts…" required style="min-height: 130px; resize: none;"></textarea>
+
+                            <div class="broadcast-meta-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+                                <select id="broadcast-type" class="search-input" style="appearance: auto; -webkit-appearance: auto;">
+                                    <option value="system_alert">System Alert</option>
+                                    <option value="payout_processed">Financial Notice</option>
+                                </select>
+                                <input type="text" id="broadcast-reference" class="search-input" placeholder="Reference code (optional)">
+                            </div>
+
+                            <button type="submit" class="action-btn btn-approve" style="margin-top: 0.5rem; width: 100%;">
+                                🚀 Transmit Advisory
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 5b: SUPPORT DESK -->
+            <section id="page-support" class="page-view">
+                <div class="wa-shell">
+                    <aside class="wa-sidebar">
+                        <div class="wa-sidebar-head">Hosts</div>
+                        <div id="support-ticket-list" class="wa-sidebar-list">
+                            <p style="text-align:center; color: var(--text-muted); font-size: 0.75rem; padding: 0.5rem 0;">Loading active threads…</p>
+                        </div>
+                    </aside>
+                    <div class="wa-main">
+                        <div class="wa-main-head">
+                            <button type="button" id="support-back-btn" class="wa-back-btn" aria-label="Back to host list" style="background:transparent; border:1px solid var(--border-color); color:var(--text-main); border-radius:8px; width:32px; height:32px; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; font-size:1rem;">←</button>
+                            <span id="support-thread-header">Select a host to start replying</span>
+                        </div>
+                        <div id="admin-desk-chat-stream" class="wa-main-body" style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <p class="wa-main-empty">Select a host thread on the left to reply.</p>
+                        </div>
+                        <form id="admin-desk-reply-form" class="wa-main-footer">
+                            <input type="text" id="admin-desk-reply-input" class="search-input" placeholder="Type response to host…" autocomplete="off" disabled style="flex: 1; min-width:0;">
+                            <button type="submit" id="admin-desk-send-btn" class="action-btn btn-approve" disabled style="flex: 0 0 auto; width: auto; padding: 0 1.4rem;">
+                                Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE 6: ANALYTICS -->
+            <section id="page-analytics" class="page-view">
+                <div class="host-grid host-grid-2col">
+
+                    <div class="host-form">
+                        <h2>Header Space Poll</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                            Start a poll letting hosts bid on the 3 header carousel slots on the home page.
+                            Every host is notified and can bid with featured media.
+                            The top bid per slot wins when you stop the poll.
+                        </p>
+                        <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem;">
+                            <button id="startAnalyticsPollBtn" class="action-btn btn-approve" style="flex:1;">🚀 Start Poll</button>
+                            <button id="stopAnalyticsPollBtn" class="action-btn" style="flex:1; background:rgba(239,68,68,0.15); color:#ff6b6b;">⏹ Stop & Take Top 3</button>
+                        </div>
+                        <div id="analytics-poll-status" style="color: var(--text-muted); font-size: 0.85rem;">No active poll.</div>
+                    </div>
+
+                    <div class="host-preview">
+                        <h2>Live Bid Leaderboard</h2>
+                        <div id="analytics-slots" class="scrollable-list">
+                            <p style="padding:1rem; color: var(--text-muted);">Start a poll to see live bids per slot.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="analytics-winners" style="margin-top: 1.5rem;"></div>
+            </section>
+
+            <!-- PAGE 7: USER GROWTH -->
+            <section id="page-usergrowth" class="page-view">
+                <div class="host-grid host-grid-2col" style="margin-bottom:1.5rem;">
+                    <div class="host-preview" style="text-align:center; padding:1.25rem;">
+                        <p style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Total Users</p>
+                        <p id="ug-total-users" style="font-size:2rem; font-weight:800; color:var(--text-main);">—</p>
+                    </div>
+                    <div class="host-preview" style="text-align:center; padding:1.25rem;">
+                        <p style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Total Hosts</p>
+                        <p id="ug-total-hosts" style="font-size:2rem; font-weight:800; color:var(--text-main);">—</p>
+                    </div>
+                    <div class="host-preview" style="text-align:center; padding:1.25rem;">
+                        <p style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Active (7 days)</p>
+                        <p id="ug-active-7d" style="font-size:2rem; font-weight:800; color:var(--accent-primary);">—</p>
+                    </div>
+                    <div class="host-preview" style="text-align:center; padding:1.25rem;">
+                        <p style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Avg. Session Time</p>
+                        <p id="ug-avg-session" style="font-size:2rem; font-weight:800; color:var(--text-main);">—</p>
+                    </div>
+                </div>
+
+                <div class="host-preview">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+                        <h2 style="margin:0;">Weekly User Growth</h2>
+                        <select id="ug-weeks-select" class="search-input" style="width:auto; appearance:auto; -webkit-appearance:auto;">
+                            <option value="8">Last 8 weeks</option>
+                            <option value="13">Last 13 weeks</option>
+                            <option value="26" selected>Last 26 weeks</option>
+                            <option value="52">Last 52 weeks</option>
+                        </select>
+                    </div>
+                    <div id="ug-chart-wrap" style="width:100%; overflow-x:auto;">
+                        <p style="text-align:center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">Loading growth data…</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- UNIVERSAL MODAL LAYER -->
+    <div id="global-overlay" class="detail-overlay">
+        <div id="global-card" class="detail-card">
+            <button class="close-x" onclick="closeGlobalModal()">×</button>
+            <div id="modal-injector-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Topbar page-title/eyebrow syncing keyed by page id.
+        const PAGE_META = {
+            verifications: { eyebrow: 'Operations', title: 'Host Verification' },
+            events:        { eyebrow: 'Operations', title: 'Events Uploaded' },
+            payouts:       { eyebrow: 'Operations', title: 'Payout Requests' },
+            refunds:       { eyebrow: 'Operations', title: 'Refunds' },
+            'manual-payments': { eyebrow: 'Operations', title: 'Manual Payments' },
+            'duplicate-guard': { eyebrow: 'Operations', title: 'Duplicate Guard' },
+            'adder': { eyebrow: 'Operations', title: 'Adder' },
+            financials:    { eyebrow: 'Growth',     title: 'Financials' },
+            'referral-gate': { eyebrow: 'Growth',   title: 'Referral Gate' },
+            analytics:     { eyebrow: 'Growth',     title: 'Analytics' },
+            usergrowth:    { eyebrow: 'Growth',     title: 'User Growth' },
+            broadcasts:    { eyebrow: 'Growth',     title: 'Broadcasts' },
+            support:       { eyebrow: 'Growth',     title: 'Support Desk' },
+        };
+        window.__updateTopbar = function(pageId) {
+            const meta = PAGE_META[pageId];
+            if (!meta) return;
+            const eb = document.getElementById('topbar-eyebrow');
+            const tt = document.getElementById('topbar-page-title');
+            if (eb) eb.textContent = meta.eyebrow;
+            if (tt) tt.textContent = meta.title;
+        };
+
+        function toggleThemeEngine() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const targetTheme = (currentTheme === 'light') ? 'dark' : 'light';
+            const toggleBtn = document.getElementById('theme-switcher-node');
+            document.documentElement.setAttribute('data-theme', targetTheme);
+            toggleBtn.innerText = (targetTheme === 'light') ? '🌙' : '☀️';
+            localStorage.setItem('bash-admin-theme-pref', targetTheme);
+        }
+
+        // Mobile off-canvas nav drawer — the sidebar itself is reused as-is,
+        // just slid in/out of view via a class on the shell.
+        window.toggleMobileNav = function() {
+            document.getElementById('suite-shell-root')?.classList.toggle('mobile-nav-open');
+        };
+        window.closeMobileNav = function() {
+            document.getElementById('suite-shell-root')?.classList.remove('mobile-nav-open');
+        };
+
+        (function() {
+            const savedPref = localStorage.getItem('bash-admin-theme-pref') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedPref);
+            window.addEventListener("DOMContentLoaded", () => {
+                const btn = document.getElementById('theme-switcher-node');
+                if (btn) btn.innerText = (savedPref === 'light') ? '🌙' : '☀️';
+            });
+        })();
+    </script>
+    <script src="admin.js"></script>
+</body>
+</html>
