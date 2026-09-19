@@ -3,7 +3,7 @@
   "short_name": "Keja",
   "name": "Keja — Find your next home",
   "description": "Discover rental properties across Kenya, swipe to save, and connect with landlords directly.",
-  "start_url": "./home.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],

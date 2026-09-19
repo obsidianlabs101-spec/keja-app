@@ -6,7 +6,7 @@
 }
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text)}
 body.dark{--bg:#0D0D12;--card:#17171F;--text:#F7F7FA;--muted:#9999A7;--border:#292934;--primary-light:#28223F;--shadow:0 12px 35px rgba(0,0,0,.25)}
-button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app-shell{max-width:1180px;margin:auto;min-height:100vh;padding-bottom:92px}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app-shell{max-width:1180px;margin:auto;min-height:100vh;padding-bottom:60px}
 .topbar{height:72px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(18px)}
 .brand{font-size:27px;font-weight:800;letter-spacing:-1.4px}.brand span{color:var(--primary)}
 .top-actions{display:flex;gap:10px;align-items:center}.icon-btn,.avatar{width:42px;height:42px;border-radius:50%;background:var(--card);color:var(--text);border:1px solid var(--border);box-shadow:var(--shadow)}.avatar{background:var(--primary);color:#fff;font-weight:700;border:0}
@@ -21,7 +21,7 @@ main{padding:12px 22px}.hero{padding:28px 0 18px}.eyebrow{color:var(--primary);f
 .profile-head{display:flex;align-items:center;gap:15px;padding:24px 0}.big-avatar{width:72px;height:72px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:800}.settings-list{display:grid;gap:10px}.setting{display:flex;align-items:center;justify-content:space-between;padding:17px;background:var(--card);border:1px solid var(--border);border-radius:16px}.setting button{background:transparent;color:var(--text)}.switch{width:48px;height:28px;border-radius:20px;background:var(--border);padding:3px}.switch span{display:block;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s}.switch.on{background:var(--primary)}.switch.on span{transform:translateX(20px)}
 .dashboard{padding-top:18px}.dash-top{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}.dash-top h1{margin:0;font-size:32px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.stat{padding:18px;background:var(--card);border:1px solid var(--border);border-radius:18px}.stat strong{display:block;font-size:27px;margin-top:7px}.table-card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:auto;margin-top:18px}.table{width:100%;border-collapse:collapse;min-width:680px}.table th,.table td{text-align:left;padding:15px;border-bottom:1px solid var(--border);font-size:13px}.table th{color:var(--muted);font-weight:600}.mini-img{width:54px;height:42px;object-fit:cover;border-radius:9px;vertical-align:middle;margin-right:8px}.status{padding:6px 9px;border-radius:999px;font-size:11px;font-weight:700}.available{background:#EAF9EF;color:#159447}.booked{background:#FFF0F0;color:#C92D2D}
 .two-col{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:18px}.panel{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px}.panel h3{margin-top:0}.activity{display:grid;gap:14px}.activity div{padding-bottom:12px;border-bottom:1px solid var(--border)}.bar{height:9px;background:var(--border);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--primary);border-radius:99px}
-.bottom-nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:min(520px,calc(100% - 26px));padding:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow);z-index:30}.nav-item{background:transparent;color:var(--muted);padding:8px;border-radius:15px}.nav-item span{display:block;font-size:21px}.nav-item small{font-size:10px}.nav-item.active{background:var(--primary-light);color:var(--primary)}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;width:100%;margin:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0));display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:color-mix(in srgb,var(--card) 96%,transparent);backdrop-filter:blur(20px);border:0;border-top:1px solid var(--border);border-radius:0;box-shadow:none;z-index:30}.nav-item{background:transparent;color:var(--muted);padding:4px 2px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:1px}.nav-item span{display:block;font-size:17px;line-height:1}.nav-item small{font-size:9px;line-height:1.4}.nav-item.active{background:transparent;color:var(--primary)}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:18px;z-index:50}.hidden{display:none}.modal{background:var(--card);color:var(--text);border-radius:24px;width:min(620px,100%);max-height:90vh;overflow:auto;padding:20px}.modal img{width:100%;max-height:310px;object-fit:cover;border-radius:17px}.modal-head{display:flex;justify-content:space-between;align-items:center}.close{background:var(--border);color:var(--text);width:38px;height:38px;border-radius:50%}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);outline:0}
 @media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}}
 @media(max-width:560px){main{padding:8px 15px}.topbar{padding:0 15px}.grid{grid-template-columns:1fr}.property img{height:210px}.swipe-card{height:570px}.stats{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.hero{padding-top:18px}.hero h1{font-size:38px}}
@@ -136,7 +136,7 @@ body.rangi .chips .chip:nth-child(2n){background:var(--sun)}
 body.rangi .chips .chip:nth-child(3n){background:var(--mint)}
 body.rangi .tag{border-radius:9px;background:color-mix(in srgb,var(--primary) 16%,var(--card));color:var(--primary)}
 body.rangi .avatar,body.rangi .big-avatar{border-radius:16px;background:var(--coral);color:var(--text);box-shadow:4px 4px 0 var(--text)}
-body.rangi .bottom-nav{background:var(--text);border:0;border-radius:22px;box-shadow:0 8px 0 var(--primary)}
+body.rangi .bottom-nav{background:var(--text);border:0;border-top:3px solid var(--primary);border-radius:0;box-shadow:none}
 body.rangi .nav-item{color:rgba(255,246,232,.6)}
 body.rangi .nav-item.active{background:var(--coral);color:var(--text)}
 body.rangi .swipe-card{border:2px solid var(--text);border-radius:26px;box-shadow:7px 8px 0 var(--primary)}
@@ -169,7 +169,7 @@ body.rangi.dark .chip{border:1.5px solid var(--border)}
 body.rangi.dark .chips .chip:nth-child(2n){background:rgba(255,216,115,.14)}
 body.rangi.dark .chips .chip:nth-child(3n){background:rgba(79,227,191,.14)}
 body.rangi.dark .avatar,body.rangi.dark .big-avatar{background:var(--coral);color:#14111f;box-shadow:0 8px 20px rgba(255,133,179,.3)}
-body.rangi.dark .bottom-nav{background:rgba(26,23,39,.9);box-shadow:0 8px 0 rgba(164,141,255,.35)}
+body.rangi.dark .bottom-nav{background:rgba(26,23,39,.9);border-top:3px solid rgba(164,141,255,.6);box-shadow:none}
 body.rangi.dark .nav-item.active{background:var(--coral);color:#14111f}
 body.rangi.dark .close{background:var(--border);color:var(--text)}
 body.rangi.dark .toast{border:0;background:var(--mint);color:#0F1A18}
@@ -220,7 +220,7 @@ body.dark .hero{overflow:hidden}
    Requested change: Discover now scrolls vertically (one property per
    screen) instead of horizontally, with three action buttons per card.
    Everything else in this file is untouched. */
-.discover-scroll.vertical{display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;scroll-snap-type:y mandatory;touch-action:pan-y;gap:16px;height:calc(100dvh - 250px);padding:5px 2px 18px}
+.discover-scroll.vertical{display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;scroll-snap-type:y mandatory;touch-action:pan-y;gap:16px;height:calc(100dvh - 220px);padding:5px 2px 18px}
 .discover-scroll.vertical .swipe-card{min-width:100%;width:100%;height:100%;min-height:420px;scroll-snap-align:start;flex:none}
 .discover-fab-stack{position:absolute;right:16px;bottom:26px;display:flex;flex-direction:column;gap:12px;z-index:5}
 .discover-fab{width:48px;height:48px;border-radius:50%;background:rgba(23,23,28,.55);backdrop-filter:blur(6px);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.25)}
@@ -229,4 +229,4 @@ body.dark .hero{overflow:hidden}
 .discover-page.ui-hidden .discover-scroll.vertical{height:100dvh}
 body.rangi .discover-fab{border:2px solid var(--text);box-shadow:3px 4px 0 var(--text)}
 body.rangi .discover-fab.active{background:var(--coral)}
-@media(max-width:560px){.discover-scroll.vertical{height:calc(100dvh - 230px)}}
+@media(max-width:560px){.discover-scroll.vertical{height:calc(100dvh - 200px)}}

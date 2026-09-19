@@ -39,6 +39,9 @@ function mediaUrl(url) {
   return API_BASE + "/" + url.replace(/^\/+/, "");
 }
 
+const ICON_EYE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const ICON_EYE_OFF = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>`;
+
 /* ---------------- API helper ---------------- */
 async function api(path, options) {
   options = options || {};
@@ -214,7 +217,7 @@ function discover() {
    <div class="discover-fab-stack">
      <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
      <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
-     <button class="discover-fab hide-fab" title="Hide buttons">👁</button>
+     <button class="discover-fab hide-fab" title="Hide buttons">${discoverUIHidden ? ICON_EYE_OFF : ICON_EYE}</button>
    </div>
  </article>`).join("");
     bindDiscoverCards();
@@ -247,6 +250,9 @@ function bindDiscoverCards() {
       discoverUIHidden = !discoverUIHidden;
       const page = document.getElementById("discoverPage");
       if (page) page.classList.toggle("ui-hidden", discoverUIHidden);
+      document.querySelectorAll("#discoverScroll .hide-fab").forEach(btn => {
+        btn.innerHTML = discoverUIHidden ? ICON_EYE_OFF : ICON_EYE;
+      });
     };
 
     card.onclick = () => openProperty(id);
@@ -669,6 +675,12 @@ document.querySelectorAll(".nav-item").forEach(x => x.onclick = () => goto(x.dat
 document.querySelector(".avatar").onclick = () => isLoggedIn() ? goto("profile") : openLogin();
 modalBackdrop.onclick = e => { if (e.target === modalBackdrop) hideModal(); };
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideModal(); });
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 
 /* ---------------- Boot ---------------- */
 updateAvatar();
