@@ -9,7 +9,7 @@
  * To point the whole app at a different backend (new LAN IP, ngrok tunnel,
  * staging server, production domain, etc.), change ONLY the line below.
  */
-window.BASH_API_BASE_URL = "https://bash-backend-qcfw.onrender.com";
+window.BASH_API_BASE_URL = "https://keja-backend-uqzk.onrender.com";
 
 /**
  * Heartbeat — tells the backend "a logged-in user is actively using the
