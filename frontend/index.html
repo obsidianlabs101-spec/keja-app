@@ -1,150 +1,38 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Keja — Find your next home</title>
-<meta name="description" content="Keja — discover rental properties across Kenya, swipe to save, and connect with landlords directly.">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="icon" href="assets/favicon-32.png">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="api-config.js"></script>
-<link rel="stylesheet" href="keja.css">
-<style>
-  body { padding-bottom: 24px; }
-  .auth-wrap { max-width: 420px; margin: 0 auto; padding: 48px 22px 24px; min-height: 100vh; display: flex; flex-direction: column; }
-  .auth-logo { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
-  .auth-logo svg { color: var(--primary); }
-  .auth-tag { color: var(--text-secondary); margin: 8px 0 32px; font-size: 15px; }
-  .auth-tabs { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 4px; margin-bottom: 22px; }
-  .auth-tab { flex: 1; text-align: center; padding: 10px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; color: var(--text-secondary); }
-  .auth-tab.active { background: var(--primary); color: #fff; }
-  .auth-error { color: #ef4444; font-size: 13px; margin: -6px 0 12px; min-height: 16px; }
-  .auth-switch { text-align: center; font-size: 13.5px; color: var(--text-secondary); margin-top: 18px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keja — Find a place you'll love</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="auth-wrap">
-  <div class="auth-logo">
-    <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    Keja
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">keja<span>.</span></div>
+      <div class="top-actions">
+        <button class="avatar" data-view="profile">SM</button>
+      </div>
+    </header>
+
+    <main id="app"></main>
+
+    <nav class="bottom-nav">
+      <button data-view="home" class="nav-item active"><span>⌂</span><small>Home</small></button>
+      <button data-view="discover" class="nav-item"><span>⌕</span><small>Discover</small></button>
+      <button data-view="interested" class="nav-item"><span>♡</span><small>Interested</small></button>
+      <button data-view="profile" class="nav-item"><span>◉</span><small>Profile</small></button>
+    </nav>
   </div>
-  <p class="auth-tag">Find a place to call home — swipe through verified rentals across Kenya.</p>
-  <div class="auth-error" id="refBanner" style="display:none; color: var(--green-dark); background: var(--green-light); padding:10px 12px; border-radius: var(--radius-sm); margin-bottom: 14px;">You were invited to Keja — sign up to get started 🎉</div>
 
-  <div class="auth-tabs">
-    <div class="auth-tab active" id="tabLogin">Log in</div>
-    <div class="auth-tab" id="tabRegister">Sign up</div>
+  <div class="modal-backdrop hidden" id="modalBackdrop">
+    <div class="modal" id="modal"></div>
   </div>
 
-  <form id="loginForm">
-    <div class="keja-field"><label>Email</label><input type="email" id="loginEmail" required autocomplete="email"></div>
-    <div class="keja-field"><label>Password</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
-    <div class="auth-error" id="loginError"></div>
-    <button class="keja-btn" type="submit" id="loginBtn">Log in</button>
-  </form>
-
-  <form id="registerForm" style="display:none">
-    <div class="keja-field"><label>Full name</label><input type="text" id="regName" required></div>
-    <div class="keja-field"><label>Username</label><input type="text" id="regUsername" required></div>
-    <div class="keja-field"><label>Email</label><input type="email" id="regEmail" required></div>
-    <div class="keja-field"><label>Phone</label><input type="tel" id="regPhone" placeholder="07XXXXXXXX" required></div>
-    <div class="keja-field"><label>Password</label><input type="password" id="regPassword" minlength="6" required></div>
-    <div class="auth-error" id="registerError"></div>
-    <button class="keja-btn" type="submit" id="registerBtn">Create account</button>
-  </form>
-
-  <div class="auth-switch">By continuing you agree to Keja's <a href="terms.html" style="color:var(--primary)">Terms</a> &amp; <a href="privacy.html" style="color:var(--primary)">Privacy Policy</a>.</div>
-</div>
-
-<script src="keja-app.js"></script>
-<script>
-(function () {
-    if (Keja.isLoggedIn()) { location.href = "home.html"; return; }
-
-    const params = new URLSearchParams(location.search);
-    if ((params.get("ref") || "").trim()) {
-        document.getElementById("refBanner").style.display = "block";
-    }
-
-    const tabLogin = document.getElementById("tabLogin");
-    const tabRegister = document.getElementById("tabRegister");
-    const loginForm = document.getElementById("loginForm");
-    const registerForm = document.getElementById("registerForm");
-
-    tabLogin.onclick = function () {
-        tabLogin.classList.add("active"); tabRegister.classList.remove("active");
-        loginForm.style.display = ""; registerForm.style.display = "none";
-    };
-    tabRegister.onclick = function () {
-        tabRegister.classList.add("active"); tabLogin.classList.remove("active");
-        registerForm.style.display = ""; loginForm.style.display = "none";
-    };
-
-    if ((params.get("ref") || "").trim()) {
-        tabRegister.click();
-    }
-
-    loginForm.addEventListener("submit", async function (e) {
-        e.preventDefault();
-        const errEl = document.getElementById("loginError");
-        const btn = document.getElementById("loginBtn");
-        errEl.textContent = ""; btn.disabled = true; btn.textContent = "Logging in…";
-        try {
-            const res = await Keja.api("/login", {
-                method: "POST",
-                body: JSON.stringify({
-                    email: document.getElementById("loginEmail").value.trim(),
-                    password: document.getElementById("loginPassword").value,
-                }),
-            });
-            const me = await fetch(window.BASH_API_BASE_URL + "/users/me", { headers: { Authorization: "Bearer " + res.access_token } }).then(r => r.json());
-            Keja.setSession(res.access_token, me);
-            location.href = "home.html";
-        } catch (err) {
-            errEl.textContent = err.message || "Login failed";
-        } finally {
-            btn.disabled = false; btn.textContent = "Log in";
-        }
-    });
-
-    registerForm.addEventListener("submit", async function (e) {
-        e.preventDefault();
-        const errEl = document.getElementById("registerError");
-        const btn = document.getElementById("registerBtn");
-        errEl.textContent = ""; btn.disabled = true; btn.textContent = "Creating account…";
-        try {
-            const params = new URLSearchParams(location.search);
-            const refCode = (params.get("ref") || "").trim() || undefined;
-            await Keja.api("/register", {
-                method: "POST",
-                body: JSON.stringify({
-                    full_name: document.getElementById("regName").value.trim(),
-                    username: document.getElementById("regUsername").value.trim(),
-                    email: document.getElementById("regEmail").value.trim(),
-                    phone: document.getElementById("regPhone").value.trim(),
-                    password: document.getElementById("regPassword").value,
-                    ref: refCode,
-                }),
-            });
-            const res = await Keja.api("/login", {
-                method: "POST",
-                body: JSON.stringify({
-                    email: document.getElementById("regEmail").value.trim(),
-                    password: document.getElementById("regPassword").value,
-                }),
-            });
-            const me = await fetch(window.BASH_API_BASE_URL + "/users/me", { headers: { Authorization: "Bearer " + res.access_token } }).then(r => r.json());
-            Keja.setSession(res.access_token, me);
-            location.href = "home.html";
-        } catch (err) {
-            errEl.textContent = err.message || "Registration failed";
-        } finally {
-            btn.disabled = false; btn.textContent = "Create account";
-        }
-    });
-})();
-</script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
 </body>
 </html>

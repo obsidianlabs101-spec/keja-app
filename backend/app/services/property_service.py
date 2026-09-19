@@ -56,6 +56,20 @@ def list_landlord_properties(db: Session, landlord_id: UUID) -> List[Property]:
     )
 
 
+def list_public_landlord_properties(db: Session, landlord_id: UUID) -> List[Property]:
+    """Same as list_landlord_properties but for the PUBLIC "view this
+    landlord's other listings" page — only ever shows properties that
+    are actually available, unlike the landlord's own dashboard which
+    shows everything including booked/unavailable ones."""
+    return (
+        _base_query(db)
+        .filter(Property.landlord_id == landlord_id)
+        .filter(Property.is_available == True)  # noqa: E712
+        .order_by(Property.created_at.desc())
+        .all()
+    )
+
+
 def add_image(db: Session, prop: Property, url: str, is_main: bool = False) -> PropertyImage:
     if is_main:
         for existing in prop.images:
@@ -177,6 +191,46 @@ def remove_interested(db: Session, user_id: UUID, property_id: UUID) -> None:
         .delete()
     )
     db.commit()
+
+
+def landlord_stats(db: Session, landlord_id) -> dict:
+    """Real numbers for the landlord dashboard stat tiles — no
+    placeholders. Computed straight from Property/InterestedProperty/
+    ContactUnlock rather than faked, since a landlord seeing invented
+    view/interest counts would be actively misleading."""
+    from sqlalchemy import func as sa_func
+    from app.models.interested_property import InterestedProperty
+    from app.models.contact_unlock import ContactUnlock
+
+    mine = _base_query(db).filter(Property.landlord_id == landlord_id)
+    active_listings = mine.filter(Property.is_available == True).count()  # noqa: E712
+    total_views = db.query(sa_func.coalesce(sa_func.sum(Property.view_count), 0)).filter(
+        Property.landlord_id == landlord_id, Property.is_removed == False  # noqa: E712
+    ).scalar() or 0
+
+    my_property_ids = [p.id for p in mine.all()]
+    interested_count = 0
+    unlocks_count = 0
+    unlocks_revenue = 0.0
+    if my_property_ids:
+        interested_count = (
+            db.query(InterestedProperty).filter(InterestedProperty.property_id.in_(my_property_ids)).count()
+        )
+        unlocked = (
+            db.query(ContactUnlock)
+            .filter(ContactUnlock.property_id.in_(my_property_ids), ContactUnlock.status == "unlocked")
+            .all()
+        )
+        unlocks_count = len(unlocked)
+        unlocks_revenue = sum(u.amount for u in unlocked)
+
+    return {
+        "active_listings": active_listings,
+        "total_views": int(total_views),
+        "interested_count": interested_count,
+        "contact_unlocks": unlocks_count,
+        "contact_unlocks_revenue": unlocks_revenue,
+    }
 
 
 def increment_view_count(db: Session, prop: Property) -> None:

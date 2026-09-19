@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_current_user_optional, require_landlord
 from app.models.property import Property
-from app.schemas.property import PropertyCreate, PropertyFilters, PropertyRead, PropertyUpdate
+from app.schemas.property import LandlordPropertiesResponse, PropertyCreate, PropertyFilters, PropertyRead, PropertyUpdate
 from app.services import property_service
 
 router = APIRouter(prefix="/properties", tags=["properties"])
@@ -74,6 +74,21 @@ def discover(
 @router.get("/mine", response_model=List[PropertyRead])
 def my_listings(current_user=Depends(require_landlord), db: Session = Depends(get_db)):
     return property_service.list_landlord_properties(db, current_user.id)
+
+
+@router.get("/mine/stats")
+def my_stats(current_user=Depends(require_landlord), db: Session = Depends(get_db)):
+    return property_service.landlord_stats(db, current_user.id)
+
+
+@router.get("/landlord/{landlord_id}", response_model=LandlordPropertiesResponse)
+def public_landlord_properties(landlord_id: UUID, db: Session = Depends(get_db)):
+    from app.models.user import User
+    landlord = db.query(User).filter(User.id == landlord_id).first()
+    if not landlord:
+        raise HTTPException(status_code=404, detail="Landlord not found")
+    listings = property_service.list_public_landlord_properties(db, landlord_id)
+    return {"landlord": landlord, "properties": listings}
 
 
 @router.get("/interested", response_model=List[PropertyRead])

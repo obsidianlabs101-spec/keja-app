@@ -84,3 +84,8 @@ class PropertyFilters(BaseModel):
     bedrooms: Optional[int] = None
     property_type: Optional[str] = None
     q: Optional[str] = None  # free-text search across title/area/county/proximity_note
+
+
+class LandlordPropertiesResponse(BaseModel):
+    landlord: LandlordSummary
+    properties: List[PropertyRead]

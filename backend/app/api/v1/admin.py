@@ -76,6 +76,33 @@ def get_admin_profile(
     return current_admin
 
 
+@router.get("/platform-stats")
+def platform_stats(db: Session = Depends(get_db), admin=Depends(require_admin)):
+    """Real counts for the admin dashboard's top stat tiles. Kept
+    deliberately simple (no revenue/growth breakdowns) — this is just
+    enough to replace the old UI's hardcoded placeholder numbers with
+    numbers that are actually true."""
+    from app.models.user import User
+    from app.models.property import Property
+
+    total_properties = db.query(Property).filter(Property.is_removed == False).count()  # noqa: E712
+    active_landlords = (
+        db.query(Property.landlord_id)
+        .filter(Property.is_removed == False)  # noqa: E712
+        .distinct()
+        .count()
+    )
+    total_users = db.query(User).count()
+    pending_verifications = len(list_pending_host_verifications(db))
+
+    return {
+        "total_properties": total_properties,
+        "active_landlords": active_landlords,
+        "total_users": total_users,
+        "pending_verifications": pending_verifications,
+    }
+
+
 import logging as _logging
 _logger = _logging.getLogger("bash.admin")
 
