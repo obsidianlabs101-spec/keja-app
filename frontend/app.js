@@ -16,7 +16,6 @@ let viewParams = {}; // extra data for views that need it (e.g. landlordProfile 
 let dark = localStorage.getItem("kejaDark") === "1";
 let theme = localStorage.getItem("kejaTheme") || "pro";
 const THEMES = { pro: "Professional", rangi: "Rangi" };
-const ROLES = { guest: "Guest", renter: "Renter", landlord: "Landlord", admin: "Admin" };
 
 let token = localStorage.getItem("kejaToken") || "";
 let currentUser = null;
@@ -193,7 +192,7 @@ function search() {
 function discover() {
   if (!isLoggedIn()) {
     app.innerHTML = `<div class="empty locked"><div class="emoji">⌕</div><h3>Log in to discover places</h3><p class="muted">Create a free account to swipe through listings and save the ones you like.</p><button class="primary" id="discLogin" style="margin-top:14px">Log in</button></div>`;
-    document.getElementById("discLogin").onclick = () => openLogin("renter");
+    document.getElementById("discLogin").onclick = () => openLogin();
     return;
   }
 
@@ -258,7 +257,7 @@ function bindDiscoverCards() {
 function interestedPage() {
   if (!isLoggedIn()) {
     app.innerHTML = `<div class="empty locked"><div class="emoji">♡</div><h3>Log in to see your saved places</h3><button class="primary" id="intLogin" style="margin-top:14px">Log in</button></div>`;
-    document.getElementById("intLogin").onclick = () => openLogin("renter");
+    document.getElementById("intLogin").onclick = () => openLogin();
     return;
   }
   app.innerHTML = `<section class="hero"><div class="eyebrow">YOUR SAVED PLACES</div><h1>Interested</h1><p>Properties you've saved.</p></section><div id="interestedBody"><div class="empty">Loading…</div></div>`;
@@ -335,8 +334,9 @@ function logout(silent) {
 
 function requireCapability(check, label, neededRoleForLogin) {
   if (check) return true;
-  app.innerHTML = `<div class="empty locked"><div class="emoji">🔒</div><h3>${label} access only</h3><p class="muted">${isLoggedIn() ? "Your account doesn't have access to this dashboard yet." : `Log in with a ${neededRoleForLogin} account to open this dashboard.`}</p><button class="primary" id="lockLogin" style="margin-top:14px">${isLoggedIn() ? "Back to profile" : "Log in as " + neededRoleForLogin}</button></div>`;
-  document.getElementById("lockLogin").onclick = () => isLoggedIn() ? goto("profile") : openLogin(neededRoleForLogin);
+  const notLandlordYet = label === "Landlord" && isLoggedIn();
+  app.innerHTML = `<div class="empty locked"><div class="emoji">🔒</div><h3>${label} access only</h3><p class="muted">${notLandlordYet ? "Your account isn't a landlord yet — request access from your profile." : isLoggedIn() ? "Your account doesn't have access to this dashboard yet." : `Log in with your ${neededRoleForLogin} account to open this dashboard.`}</p><button class="primary" id="lockLogin" style="margin-top:14px">${notLandlordYet ? "Go to profile" : isLoggedIn() ? "Back to profile" : "Log in"}</button></div>`;
+  document.getElementById("lockLogin").onclick = () => isLoggedIn() ? goto("profile") : openLogin();
   return false;
 }
 
@@ -449,7 +449,7 @@ function openProperty(id) {
 }
 
 async function handleGetContact(propertyId) {
-  if (!isLoggedIn()) { hideModal(); openLogin("renter"); toast("Log in to contact a landlord"); return; }
+  if (!isLoggedIn()) { hideModal(); openLogin(); toast("Log in to contact a landlord"); return; }
   const area = document.getElementById("contactArea");
   area.innerHTML = `<p class="muted" style="text-align:center">Checking…</p>`;
   try {
@@ -584,11 +584,8 @@ function openBecomeLandlordModal() {
 }
 
 /* ---------------- Login / signup ---------------- */
-function openLogin(preset) {
-  if (typeof preset !== "string") preset = null;
-  let picked = preset || "renter";
+function openLogin() {
   let mode = "login";
-  const roleCards = () => ["renter", "landlord", "admin"].map(r => `<button class="role-card ${r === picked ? "active" : ""}" data-role="${r}"><em>${r === "renter" ? "♡" : r === "landlord" ? "⌂" : "✦"}</em><b>${ROLES[r]}</b><small>${r === "renter" ? "Find a place" : r === "landlord" ? "List & manage" : "Run the platform"}</small></button>`).join("");
 
   const submit = async () => {
     const id = (document.getElementById("authId").value || "").trim();
@@ -599,8 +596,8 @@ function openLogin(preset) {
     const submitBtn = document.getElementById("loginSubmit");
     submitBtn.disabled = true; submitBtn.textContent = "Please wait…";
     try {
+      const isEmail = id.includes("@");
       if (mode === "signup") {
-        const isEmail = id.includes("@");
         await api("/register", {
           method: "POST",
           body: JSON.stringify({
@@ -612,7 +609,6 @@ function openLogin(preset) {
           }),
         });
       }
-      const isEmail = id.includes("@");
       const loginRes = await api("/login", {
         method: "POST",
         body: JSON.stringify({ email: isEmail ? id : `${id.replace(/\D/g, "")}@keja.local`, password: pass }),
@@ -620,33 +616,32 @@ function openLogin(preset) {
       const me = await fetch(API_BASE + "/users/me", { headers: { Authorization: "Bearer " + loginRes.access_token } }).then(r => r.json());
       setSession(loginRes.access_token, me);
       hideModal();
-      goto(picked === "landlord" ? "landlord" : picked === "admin" ? "admin" : "home");
+      // Auto-detect: landlord/admin access comes from the account
+      // itself (is_host / is_admin), never from a role picked at
+      // login — there is no such picker anymore.
+      goto(me.is_admin ? "admin" : me.is_host ? "landlord" : "home");
       toast(`Welcome${me.name ? ", " + me.name.split(" ")[0] : ""}!`);
     } catch (e) {
       if (errEl) errEl.textContent = e.message || "Something went wrong";
     } finally {
-      submitBtn.disabled = false; submitBtn.textContent = (mode === "login" ? "Log in" : "Create account") + " as " + ROLES[picked].toLowerCase();
+      submitBtn.disabled = false; submitBtn.textContent = mode === "login" ? "Log in" : "Create account";
     }
   };
 
   const draw = () => {
     modal.innerHTML = `<div class="auth-card"><div class="auth-brand">keja<span>.</span></div><button class="close" id="close">×</button>
-  <div class="auth-hero"><div class="auth-orb">${picked === "admin" ? "✦" : picked === "landlord" ? "⌂" : "♡"}</div><h2>${mode === "login" ? "Welcome back to Keja" : "Create your Keja account"}</h2><p>${picked === "renter" ? "Save properties and contact landlords." : picked === "landlord" ? "Manage your listings, views and enquiries." : "Access platform moderation and ad placements."}</p></div>
+  <div class="auth-hero"><div class="auth-orb">♡</div><h2>${mode === "login" ? "Welcome back to Keja" : "Create your Keja account"}</h2><p>Find a place, save the ones you like and message landlords directly.</p></div>
   <div class="auth-tabs"><button class="${mode === "login" ? "active" : ""}" data-mode="login">Log in</button><button class="${mode === "signup" ? "active" : ""}" data-mode="signup">Sign up</button></div>
-  <span class="muted" style="font-size:11px;font-weight:700;letter-spacing:.06em">I AM A</span>
-  <div class="role-picker">${roleCards()}</div>
   ${mode === "signup" ? `<label class="field" style="margin-bottom:12px"><span>Full name</span><input id="authName" placeholder="e.g. Sarah Mwangi"></label>` : ""}
-  <label class="field"><span>${picked === "admin" ? "Admin email" : "Email or phone"}</span><input id="authId" placeholder="${picked === "admin" ? "admin@keja.co.ke" : "e.g. 0712 345 678"}"></label>
+  <label class="field"><span>Email or phone</span><input id="authId" placeholder="e.g. 0712 345 678"></label>
   <label class="field" style="margin-top:12px"><span>Password</span><input id="authPass" type="password" placeholder="••••••••"></label>
-  ${picked === "admin" ? `<label class="field" style="margin-top:12px"><span>Admin access code</span><input id="authCode" placeholder="Not required to log in — real admin access is granted separately"></label>` : ""}
   <p class="muted" id="authError" style="font-size:12px;min-height:14px;text-align:center"></p>
-  <button class="primary" style="width:100%;margin-top:16px" id="loginSubmit">${mode === "login" ? "Log in" : "Create account"} as ${ROLES[picked].toLowerCase()}</button>
-  <p class="auth-note">By continuing, you agree to Keja's terms and privacy policy.</p></div>`;
+  <button class="primary" style="width:100%;margin-top:16px" id="loginSubmit">${mode === "login" ? "Log in" : "Create account"}</button>
+  <p class="auth-note">By continuing, you agree to Keja's terms and privacy policy. Landlords: request landlord access from your profile after signing up.</p></div>`;
     document.getElementById("close").onclick = hideModal;
-    modal.querySelectorAll(".role-card").forEach(b => b.onclick = () => { picked = b.dataset.role; draw(); });
     modal.querySelectorAll(".auth-tabs button").forEach(b => b.onclick = () => { mode = b.dataset.mode; draw(); });
     document.getElementById("loginSubmit").onclick = submit;
-    ["authId", "authPass", "authCode", "authName"].forEach(id => { const el = document.getElementById(id); if (el) el.onkeydown = e => { if (e.key === "Enter") submit(); }; });
+    ["authId", "authPass", "authName"].forEach(id => { const el = document.getElementById(id); if (el) el.onkeydown = e => { if (e.key === "Enter") submit(); }; });
   };
   draw(); showModal();
 }

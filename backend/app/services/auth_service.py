@@ -1,4 +1,5 @@
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -363,7 +364,18 @@ def request_host_verification(
     user.verification_requested_at = datetime.utcnow()
 
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Most likely cause: the phone number typed into this form
+        # already belongs to a different account (phone has a unique
+        # constraint) — this used to surface as a raw 500. Roll back
+        # and turn it into a message the person can actually act on.
+        db.rollback()
+        raise ValueError(
+            "That phone number is already registered to another Keja account. "
+            "Use a different number, or leave it blank to keep the one on your account."
+        )
     db.refresh(user)
 
     return user

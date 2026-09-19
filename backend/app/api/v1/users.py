@@ -362,7 +362,10 @@ def request_host_verify(
             detail="User already verified as host"
         )
     
-    updated_user = request_host_verification(db, current_user, data)
+    try:
+        updated_user = request_host_verification(db, current_user, data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "message": "Host verification request submitted",
         "status": updated_user.host_verification_status,
