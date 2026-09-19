@@ -5,7 +5,7 @@
  * ============================================================ */
 
 const API_BASE = "https://keja-backend-uqzk.onrender.com";
-const MPESA_TILL = { till: "000000", name: "Keja Kenya", amount: 50 }; // placeholder till — swap before real payments
+const MPESA_TILL = { till: "4396353", name: "Keja Kenya", amount: 50 };
 
 const app = document.getElementById("app");
 const modalBackdrop = document.getElementById("modalBackdrop");
@@ -211,15 +211,20 @@ function discover() {
       scroller.outerHTML = `<div class="empty" style="width:100%"><div class="emoji">🏠</div><h3>You've seen everything for now</h3><p class="muted">Check back later for new listings.</p></div>`;
       return;
     }
-    scroller.innerHTML = list.map(x => `<article class="swipe-card" data-id="${x.id}" data-landlord="${x.landlord_id}">
-   <img src="${mediaUrl(x.main_image_url)}" alt="${x.property_type} in ${x.area || x.county}"><div class="gradient"></div>
+    scroller.innerHTML = list.map(x => {
+      const imgs = (x.images && x.images.length) ? x.images.slice().sort((a, b) => a.sort_order - b.sort_order).map(i => i.url) : [x.main_image_url];
+      return `<article class="swipe-card" data-id="${x.id}" data-landlord="${x.landlord_id}">
+   <div class="swipe-gallery">${imgs.map(u => `<img src="${mediaUrl(u)}" alt="${x.property_type} in ${x.area || x.county}">`).join("")}</div>
+   <div class="gradient"></div>
+   ${imgs.length > 1 ? `<div class="gallery-dots">${imgs.map((_, i) => `<span class="dot${i === 0 ? " active" : ""}"></span>`).join("")}</div>` : ""}
    <div class="swipe-info"><div class="price">${money(x.price)}</div><div class="meta">${x.property_type} · ${x.area || x.county}</div>${x.proximity_note ? `<div style="margin-top:9px">${x.proximity_note}</div>` : ""}</div>
    <div class="discover-fab-stack">
      <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
      <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
      <button class="discover-fab hide-fab" title="Hide buttons">${discoverUIHidden ? ICON_EYE_OFF : ICON_EYE}</button>
    </div>
- </article>`).join("");
+ </article>`;
+    }).join("");
     bindDiscoverCards();
   }).catch(() => {
     const scroller = document.getElementById("discoverScroll");
@@ -254,6 +259,15 @@ function bindDiscoverCards() {
         btn.innerHTML = discoverUIHidden ? ICON_EYE_OFF : ICON_EYE;
       });
     };
+
+    const gallery = card.querySelector(".swipe-gallery");
+    const dots = card.querySelectorAll(".gallery-dots .dot");
+    if (gallery && dots.length) {
+      gallery.addEventListener("scroll", () => {
+        const idx = Math.round(gallery.scrollLeft / gallery.clientWidth);
+        dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+      }, { passive: true });
+    }
 
     card.onclick = () => openProperty(id);
   });
@@ -492,16 +506,48 @@ function renderContactArea(propertyId, status) {
     };
     return;
   }
-  renderContactClaimForm(propertyId, status);
+  renderContactChoice(propertyId, status);
+}
+
+function shareReferralLink() {
+  const code = currentUser && currentUser.referral_code;
+  if (!code) { toast("Log in to get your referral link"); return; }
+  const link = location.origin + location.pathname.split("?")[0] + "?ref=" + code;
+  if (navigator.share) {
+    navigator.share({ title: "Keja", text: "Check out Keja — find your next home in Kenya!", url: link }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(
+      () => toast("Link copied — send it to a friend to unlock a free contact!"),
+      () => toast("Couldn't copy the link")
+    );
+  } else {
+    toast(link);
+  }
+}
+
+function renderContactChoice(propertyId, status) {
+  const area = document.getElementById("contactArea");
+  if (!area) return;
+  const canEarnFree = isLoggedIn() && currentUser && !currentUser.referral_bonus_granted;
+  area.innerHTML = `<div style="display:flex;gap:10px">
+ ${canEarnFree ? `<button class="chip" id="shareBtn" style="flex:1">Share &amp; unlock free</button>` : ""}
+ <button class="primary" id="payBtn" style="flex:1">Pay KES ${MPESA_TILL.amount}</button>
+ </div>
+ <p class="muted" style="font-size:11px;text-align:center;margin-top:8px">${canEarnFree ? "Refer a friend who signs up to earn 1 free contact unlock, or pay now." : "A KES " + MPESA_TILL.amount + " payment is matched, then the landlord's WhatsApp is revealed."}</p>`;
+  if (canEarnFree) document.getElementById("shareBtn").onclick = shareReferralLink;
+  document.getElementById("payBtn").onclick = () => renderContactClaimForm(propertyId, status);
 }
 
 function renderContactClaimForm(propertyId, status) {
   const area = document.getElementById("contactArea");
   if (!area) return;
-  area.innerHTML = `<div class="ad" style="text-align:left;padding:14px;font-size:12.5px">Go to M-Pesa → Lipa na M-Pesa → Buy Goods and Services<br>Till Number: <b>${MPESA_TILL.till}</b> (${MPESA_TILL.name})<br>Amount: <b>KES ${MPESA_TILL.amount}</b></div>
+  const canGoBack = isLoggedIn() && currentUser && !currentUser.referral_bonus_granted;
+  area.innerHTML = `${canGoBack ? `<button class="chip" id="backToChoiceBtn" style="margin-bottom:10px">← Back</button>` : ""}
+ <div class="ad" style="text-align:left;padding:14px;font-size:12.5px">Go to M-Pesa → Lipa na M-Pesa → Buy Goods and Services<br>Till Number: <b>${MPESA_TILL.till}</b> (${MPESA_TILL.name})<br>Amount: <b>KES ${MPESA_TILL.amount}</b></div>
  <label class="field" style="margin-top:10px"><span>Paste the M-Pesa confirmation SMS (or just the code)</span><textarea id="claimText" rows="3" placeholder="e.g. QGH7XXXXX Confirmed. Ksh50.00 sent..."></textarea></label>
  <p class="muted" id="claimError" style="font-size:12px;min-height:14px"></p>
  <button class="primary" style="width:100%" id="submitClaimBtn">I've paid — verify my code</button>`;
+  if (canGoBack) document.getElementById("backToChoiceBtn").onclick = () => renderContactChoice(propertyId, status);
   document.getElementById("submitClaimBtn").onclick = async () => {
     const raw = document.getElementById("claimText").value.trim();
     const errEl = document.getElementById("claimError");

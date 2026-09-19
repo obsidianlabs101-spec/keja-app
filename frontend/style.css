@@ -217,16 +217,42 @@ body.dark.rangi{background:radial-gradient(900px 600px at 10% -8%,#3A2450 0%,tra
 body.dark .hero{overflow:hidden}
 
 /* ===================== Additions: vertical Discover feed + action buttons =====================
-   Requested change: Discover now scrolls vertically (one property per
-   screen) instead of horizontally, with three action buttons per card.
-   Everything else in this file is untouched. */
-.discover-scroll.vertical{display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;scroll-snap-type:y mandatory;touch-action:pan-y;gap:16px;height:calc(100dvh - 220px);padding:5px 2px 18px}
-.discover-scroll.vertical .swipe-card{min-width:100%;width:100%;height:100%;min-height:420px;scroll-snap-align:start;flex:none}
+   Requested change: Discover scrolls vertically (one property per
+   screen, up/down = next property) and horizontally within a card
+   cycles that property's photos (left/right = next photo) — a 2D
+   nested scroll-snap, same pattern Reels/TikTok use.
+
+   IMPORTANT: the base .swipe-card rule further up this file sets
+   touch-action:none (left untouched, in case anything else relies on
+   it) — that silently blocks ALL touch scrolling on anything with this
+   class name, which is why vertical scroll didn't work at first. The
+   selectors below are more specific so they win over it. */
+.discover-scroll.vertical{
+  display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;
+  scroll-snap-type:y mandatory;touch-action:pan-y;overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;gap:16px;padding:5px 2px 18px;
+  height:calc(100vh - 220px);height:calc(100dvh - 220px);
+}
+.discover-scroll.vertical .swipe-card{
+  min-width:100%;width:100%;height:100%;min-height:420px;flex:none;
+  scroll-snap-align:start;scroll-snap-stop:always;touch-action:pan-y;
+}
+.swipe-gallery{
+  position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;touch-action:pan-x;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.swipe-gallery::-webkit-scrollbar{display:none}
+.swipe-gallery img{width:100%;height:100%;flex:none;scroll-snap-align:start;scroll-snap-stop:always;object-fit:cover;object-position:center}
+.gallery-dots{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:4px;z-index:4;pointer-events:none}
+.gallery-dots .dot{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.4)}
+.gallery-dots .dot.active{background:#fff}
 .discover-fab-stack{position:absolute;right:16px;bottom:26px;display:flex;flex-direction:column;gap:12px;z-index:5}
 .discover-fab{width:48px;height:48px;border-radius:50%;background:rgba(23,23,28,.55);backdrop-filter:blur(6px);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.25)}
 .discover-fab.active{background:var(--primary);color:#fff}
-.discover-page.ui-hidden .section-head,.discover-page.ui-hidden .swipe-hint,.discover-page.ui-hidden .ad,.discover-page.ui-hidden .swipe-info,.discover-page.ui-hidden .landlord-fab,.discover-page.ui-hidden .interested-fab{display:none}
-.discover-page.ui-hidden .discover-scroll.vertical{height:100dvh}
+.discover-page .gradient,.discover-page .swipe-info,.discover-page .gallery-dots{pointer-events:none}
+.discover-page.ui-hidden .section-head,.discover-page.ui-hidden .swipe-hint,.discover-page.ui-hidden .ad,.discover-page.ui-hidden .swipe-info,.discover-page.ui-hidden .gallery-dots,.discover-page.ui-hidden .landlord-fab,.discover-page.ui-hidden .interested-fab{display:none}
+.discover-page.ui-hidden .discover-scroll.vertical{height:100vh;height:100dvh}
 body.rangi .discover-fab{border:2px solid var(--text);box-shadow:3px 4px 0 var(--text)}
 body.rangi .discover-fab.active{background:var(--coral)}
-@media(max-width:560px){.discover-scroll.vertical{height:calc(100dvh - 200px)}}
+@media(max-width:560px){.discover-scroll.vertical{height:calc(100vh - 200px);height:calc(100dvh - 200px)}}
