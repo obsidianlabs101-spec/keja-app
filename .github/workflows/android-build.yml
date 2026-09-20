@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: android
@@ -41,3 +43,19 @@ jobs:
           name: keja-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Actions artifacts require a GitHub login to download, which is no
+      # good for a public "Download" button on the website. A GitHub
+      # Release asset is a plain public URL with no login wall, and this
+      # re-publishes to the SAME tag every build so the website's link
+      # never has to change.
+      - name: Publish APK as a public release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "Keja Android (latest build)"
+          body: "Automatically rebuilt from the latest commit to main. Debug build — not signed for the Play Store."
+          make_latest: true
+          files: android/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
