@@ -2,6 +2,8 @@ package com.keja.app.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -225,14 +227,12 @@ private fun DiscoverFab(icon: androidx.compose.ui.graphics.vector.ImageVector, a
     }
 }
 
-private fun Modifier.clickableSimple(onClick: () -> Unit): Modifier = this.then(
-    Modifier.clickableNoIndication(onClick)
-)
-
-private fun Modifier.clickableNoIndication(onClick: () -> Unit): Modifier = androidx.compose.ui.composed {
-    androidx.compose.foundation.clickable(
+@Composable
+private fun Modifier.clickableSimple(onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    return this.clickable(
         indication = null,
-        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+        interactionSource = interactionSource,
         onClick = onClick,
     )
 }
