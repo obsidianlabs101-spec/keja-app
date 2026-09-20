@@ -689,6 +689,7 @@ function openLogin() {
   <label class="field" style="margin-top:12px"><span>Password</span><input id="authPass" type="password" placeholder="••••••••"></label>
   <p class="muted" id="authError" style="font-size:12px;min-height:14px;text-align:center"></p>
   <button class="primary" style="width:100%;margin-top:16px" id="loginSubmit">${mode === "login" ? "Log in" : "Create account"}</button>
+  <a class="chip" href="https://github.com/obsidianlabs101-spec/keja-app/releases/download/android-latest/app-debug.apk" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;text-decoration:none;box-sizing:border-box">⬇ Download Android app</a>
   <p class="auth-note">By continuing, you agree to Keja's terms and privacy policy. Landlords: request landlord access from your profile after signing up.</p></div>`;
     document.getElementById("close").onclick = hideModal;
     modal.querySelectorAll(".auth-tabs button").forEach(b => b.onclick = () => { mode = b.dataset.mode; draw(); });
