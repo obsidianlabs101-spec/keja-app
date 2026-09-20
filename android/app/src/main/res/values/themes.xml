@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Keja" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#F8F8FC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+    </style>
+</resources>
