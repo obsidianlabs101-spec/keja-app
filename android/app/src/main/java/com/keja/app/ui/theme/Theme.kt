@@ -11,12 +11,19 @@ import androidx.compose.ui.graphics.Color
 
 val LocalKejaPalette = compositionLocalOf { LightPalette }
 
+/**
+ * @param darkOverride null = follow the system setting (like the web app
+ * does by default); true/false = the user explicitly picked one in
+ * Profile, and that always wins over the system setting.
+ */
 @Composable
 fun KejaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeStyle: KejaThemeStyle = KejaThemeStyle.PROFESSIONAL,
+    darkOverride: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
-    val palette = if (darkTheme) DarkPalette else LightPalette
+    val darkTheme = darkOverride ?: isSystemInDarkTheme()
+    val palette = paletteFor(themeStyle, darkTheme)
 
     val colorScheme = if (darkTheme) {
         darkColorScheme(

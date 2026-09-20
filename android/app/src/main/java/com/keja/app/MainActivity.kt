@@ -5,9 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.keja.app.data.AppContainer
 import com.keja.app.ui.nav.KejaNavGraph
+import com.keja.app.ui.theme.KejaThemeStyle
 import com.keja.app.ui.theme.KejaTheme
 import kotlinx.coroutines.flow.first
 
@@ -30,7 +33,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            KejaTheme {
+            val themeStyle by sessionStore.themeStyleFlow.collectAsState(initial = KejaThemeStyle.PROFESSIONAL)
+            val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = null)
+
+            KejaTheme(themeStyle = themeStyle, darkOverride = darkOverride) {
                 KejaNavGraph()
             }
         }

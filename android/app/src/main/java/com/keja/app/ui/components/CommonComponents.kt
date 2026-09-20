@@ -32,11 +32,17 @@ fun KejaPrimaryButton(
     onClick: () -> Unit,
 ) {
     val palette = LocalKejaPalette.current
+    val isRangi = palette.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = KejaShapes.button,
-        colors = ButtonDefaults.buttonColors(containerColor = palette.primary, contentColor = Color.White, disabledContainerColor = palette.primary.copy(alpha = 0.5f)),
+        colors = if (isRangi) {
+            ButtonDefaults.buttonColors(containerColor = palette.text, contentColor = palette.bg, disabledContainerColor = palette.text.copy(alpha = 0.5f))
+        } else {
+            ButtonDefaults.buttonColors(containerColor = palette.primary, contentColor = Color.White, disabledContainerColor = palette.primary.copy(alpha = 0.5f))
+        },
+        border = if (isRangi) androidx.compose.foundation.BorderStroke(2.dp, palette.mint) else null,
         modifier = modifier.height(50.dp),
     ) {
         Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -129,11 +135,13 @@ val bottomNavItems = listOf(NavDestination.Home, NavDestination.Discover, NavDes
 @Composable
 fun KejaBottomNav(currentRoute: String?, onNavigate: (String) -> Unit) {
     val palette = LocalKejaPalette.current
+    val isRangi = palette.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI
+    val activeColor = if (isRangi) palette.coral else palette.primary
     Row(
         Modifier
             .fillMaxWidth()
-            .background(palette.card)
-            .border(width = 1.dp, color = palette.border)
+            .background(if (isRangi) palette.text else palette.card)
+            .border(width = if (isRangi) 0.dp else 1.dp, color = palette.border)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -145,13 +153,14 @@ fun KejaBottomNav(currentRoute: String?, onNavigate: (String) -> Unit) {
                 NavDestination.Interested -> if (active) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
                 NavDestination.Profile -> if (active) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle
             }
+            val inactiveColor = if (isRangi) Color.White.copy(alpha = 0.6f) else palette.muted
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable { onNavigate(dest.route) }.padding(6.dp),
             ) {
-                Icon(icon, contentDescription = dest.label, tint = if (active) palette.primary else palette.muted, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = dest.label, tint = if (active) activeColor else inactiveColor, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.height(2.dp))
-                Text(dest.label, fontSize = 9.sp, color = if (active) palette.primary else palette.muted)
+                Text(dest.label, fontSize = 9.sp, color = if (active) activeColor else inactiveColor)
             }
         }
     }

@@ -35,6 +35,8 @@ object KejaColors {
     val BookedText = Color(0xFFC92D2D)
 }
 
+enum class KejaThemeStyle { PROFESSIONAL, RANGI }
+
 data class KejaPalette(
     val bg: Color,
     val card: Color,
@@ -44,6 +46,10 @@ data class KejaPalette(
     val primary: Color,
     val primaryDark: Color,
     val primaryLight: Color,
+    val sun: Color = Color(0xFFFFCE4A),
+    val mint: Color = Color(0xFF35E1B0),
+    val coral: Color = Color(0xFFFF6B9A),
+    val style: KejaThemeStyle = KejaThemeStyle.PROFESSIONAL,
 )
 
 val LightPalette = KejaPalette(
@@ -55,6 +61,7 @@ val LightPalette = KejaPalette(
     primary = KejaColors.Primary,
     primaryDark = KejaColors.PrimaryDark,
     primaryLight = KejaColors.PrimaryLight,
+    style = KejaThemeStyle.PROFESSIONAL,
 )
 
 val DarkPalette = KejaPalette(
@@ -66,4 +73,42 @@ val DarkPalette = KejaPalette(
     primary = KejaColors.Primary,
     primaryDark = KejaColors.PrimaryDark,
     primaryLight = KejaColors.PrimaryLightDark,
+    style = KejaThemeStyle.PROFESSIONAL,
 )
+
+// Rangi — the web's playful theme (body.rangi block in style.css).
+val RangiLightPalette = KejaPalette(
+    bg = Color(0xFFFFF6E8),
+    card = Color(0xFFFFFDF9),
+    text = Color(0xFF1A1830),
+    muted = Color(0xFF6C6880),
+    border = Color(0xFFE4DCCE),
+    primary = Color(0xFF7C5CFC),
+    primaryDark = Color(0xFF5F3FF0),
+    primaryLight = Color(0xFFEDE7FF),
+    sun = Color(0xFFFFCE4A),
+    mint = Color(0xFF35E1B0),
+    coral = Color(0xFFFF6B9A),
+    style = KejaThemeStyle.RANGI,
+)
+
+val RangiDarkPalette = KejaPalette(
+    bg = Color(0xFF100E1A),
+    card = Color(0xFF1A1727),
+    text = Color(0xFFF4EFFF),
+    muted = Color(0xFFA49DBA),
+    border = Color(0xFF2C2740),
+    primary = Color(0xFFA48DFF),
+    primaryDark = Color(0xFF7C5CFC),
+    primaryLight = Color(0xFF241F3C),
+    sun = Color(0xFFFFD873),
+    mint = Color(0xFF4FE3BF),
+    coral = Color(0xFFFF85B3),
+    style = KejaThemeStyle.RANGI,
+)
+
+fun paletteFor(style: KejaThemeStyle, dark: Boolean): KejaPalette = when (style) {
+    KejaThemeStyle.PROFESSIONAL -> if (dark) DarkPalette else LightPalette
+    KejaThemeStyle.RANGI -> if (dark) RangiDarkPalette else RangiLightPalette
+}
+
