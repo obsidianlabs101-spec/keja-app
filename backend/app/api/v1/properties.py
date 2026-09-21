@@ -15,13 +15,6 @@ from app.services import property_service
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
-STATIC_DIR = "static"
-PROPERTIES_DIR = os.path.join(STATIC_DIR, "properties")
-
-
-def _ensure_dir():
-    os.makedirs(PROPERTIES_DIR, exist_ok=True)
-
 
 def _own_or_404(db: Session, property_id: UUID, landlord_id: UUID) -> Property:
     prop = property_service.get_property(db, property_id)
@@ -141,28 +134,22 @@ async def upload_image(
     db: Session = Depends(get_db),
 ):
     prop = _own_or_404(db, property_id, current_user.id)
-    _ensure_dir()
 
     _, ext = os.path.splitext(file.filename or "")
     ext = ext.lower() if ext.lower() in {".png", ".jpg", ".jpeg", ".webp"} else ".jpg"
+    content_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(ext, "image/jpeg")
     filename = f"{uuid.uuid4().hex}{ext}"
-    local_path = os.path.join(PROPERTIES_DIR, filename)
 
     max_bytes = 15 * 1024 * 1024
-    total = 0
-    with open(local_path, "wb") as out:
-        while True:
-            chunk = await file.read(1024 * 1024)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_bytes:
-                out.close()
-                os.remove(local_path)
-                raise HTTPException(status_code=400, detail="Image too large (15MB max)")
-            out.write(chunk)
+    data = await file.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise HTTPException(status_code=400, detail="Image too large (15MB max)")
 
-    url = f"static/properties/{filename}"
+    # Render's free web-service disk is EPHEMERAL — anything saved to
+    # local disk vanishes on the next deploy or restart. Property photos
+    # are uploaded to Supabase Storage instead (same project as the
+    # database), which is the actual persistent store.
+    url = property_service.upload_to_supabase_storage(filename, data, content_type)
     image = property_service.add_image(db, prop, url, is_main=is_main)
     return {"id": str(image.id), "url": image.url, "is_main": image.is_main}
 

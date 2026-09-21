@@ -70,6 +70,37 @@ def list_public_landlord_properties(db: Session, landlord_id: UUID) -> List[Prop
     )
 
 
+def upload_to_supabase_storage(filename: str, data: bytes, content_type: str) -> str:
+    """Uploads a property photo to Supabase Storage and returns its
+    public URL. Deliberately NOT saved to local disk — Render's free
+    web-service filesystem is ephemeral and is wiped on every deploy or
+    restart, which is exactly why previously-uploaded photos stopped
+    rendering after the next deploy."""
+    import requests
+    from app.core.config import settings
+
+    if not settings.SUPABASE_ANON_KEY:
+        raise RuntimeError("SUPABASE_ANON_KEY is not configured — image uploads are disabled until it is set")
+
+    bucket = "property-images"
+    upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/{bucket}/{filename}"
+    resp = requests.post(
+        upload_url,
+        data=data,
+        headers={
+            "apikey": settings.SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
+            "Content-Type": content_type,
+            "x-upsert": "true",
+        },
+        timeout=30,
+    )
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"Supabase Storage upload failed ({resp.status_code}): {resp.text[:300]}")
+
+    return f"{settings.SUPABASE_URL}/storage/v1/object/public/{bucket}/{filename}"
+
+
 def add_image(db: Session, prop: Property, url: str, is_main: bool = False) -> PropertyImage:
     if is_main:
         for existing in prop.images:

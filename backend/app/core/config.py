@@ -28,6 +28,8 @@ def _require_secret(env_name: str, min_len: int = 16) -> str:
 
 class Settings:
     DATABASE_URL = os.getenv("DATABASE_URL")
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://mepnzrjhmaotilbqnvsy.supabase.co")
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
     # --- Core auth secret -------------------------------------------------
     SECRET_KEY = _require_secret("SECRET_KEY")
