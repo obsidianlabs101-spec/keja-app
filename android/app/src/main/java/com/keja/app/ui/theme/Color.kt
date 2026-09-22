@@ -50,6 +50,14 @@ data class KejaPalette(
     val mint: Color = Color(0xFF35E1B0),
     val coral: Color = Color(0xFFFF6B9A),
     val style: KejaThemeStyle = KejaThemeStyle.PROFESSIONAL,
+    // Nav colors are explicit per-palette rather than computed ad-hoc in
+    // the component — that's what caused the Rangi dark-mode bug (nav
+    // background reused `text`, which is a LIGHT color in dark mode,
+    // paired with light inactive icons = invisible against it).
+    val navBg: Color = card,
+    val navInactive: Color = muted,
+    val navActiveBg: Color = Color.Transparent,
+    val navActiveFg: Color = primary,
 )
 
 val LightPalette = KejaPalette(
@@ -90,6 +98,13 @@ val RangiLightPalette = KejaPalette(
     mint = Color(0xFF35E1B0),
     coral = Color(0xFFFF6B9A),
     style = KejaThemeStyle.RANGI,
+    // Matches body.rangi .bottom-nav / .nav-item / .nav-item.active exactly:
+    // dark nav bar, warm off-white inactive icons, coral pill for the
+    // active item with dark text on top of it.
+    navBg = Color(0xFF1A1830),
+    navInactive = Color(0xFFFFF6E8).copy(alpha = 0.6f),
+    navActiveBg = Color(0xFFFF6B9A),
+    navActiveFg = Color(0xFF1A1830),
 )
 
 val RangiDarkPalette = KejaPalette(
@@ -105,6 +120,15 @@ val RangiDarkPalette = KejaPalette(
     mint = Color(0xFF4FE3BF),
     coral = Color(0xFFFF85B3),
     style = KejaThemeStyle.RANGI,
+    // Matches body.rangi.dark .bottom-nav / .nav-item.active exactly.
+    // IMPORTANT: this must NOT reuse `text` for the nav background —
+    // `text` is a light color in dark mode, and pairing that with the
+    // (also light) inactive icon color made the nav unreadable, which
+    // is exactly the bug being fixed here.
+    navBg = Color(0xE61A1727),
+    navInactive = Color(0xFFFFF6E8).copy(alpha = 0.6f),
+    navActiveBg = Color(0xFFFF85B3),
+    navActiveFg = Color(0xFF14111F),
 )
 
 fun paletteFor(style: KejaThemeStyle, dark: Boolean): KejaPalette = when (style) {

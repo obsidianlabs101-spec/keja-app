@@ -247,7 +247,7 @@ body.dark .hero{overflow:hidden}
 }
 .discover-page .section-head{flex:none;margin-bottom:10px}
 .discover-page .swipe-hint{flex:none;margin-top:10px}
-.discover-page .ad{flex:none;margin-top:8px}
+.discover-page .ad{flex:none;margin-top:8px;margin-bottom:0;min-height:40px;font-size:10.5px}
 .discover-scroll.vertical{
   flex:1 1 auto;min-height:0; /* min-height:0 lets a flex child actually shrink+scroll instead of growing to fit its content */
   display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;

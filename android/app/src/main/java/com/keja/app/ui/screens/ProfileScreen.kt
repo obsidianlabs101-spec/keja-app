@@ -103,6 +103,13 @@ fun ProfileScreen(
                 actionLabel = "Log out",
                 onClick = { scope.launch { repo.logout(); onLoggedOut() } },
             )
+            Spacer(Modifier.height(10.dp))
+            SettingRow(
+                title = "Switch account",
+                subtitle = "Log in as someone else without losing this session first",
+                actionLabel = "Switch",
+                onClick = onRequireLogin,
+            )
             Spacer(Modifier.height(28.dp))
         }
 

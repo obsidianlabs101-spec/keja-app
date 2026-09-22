@@ -326,12 +326,15 @@ function profile() {
  <div class="settings-list" style="margin-top:12px">
  <div class="setting"><div><strong>Dark mode</strong><div class="muted">Same layout, easier on the eyes at night</div></div><button class="switch ${dark ? "on" : ""}" id="darkSwitch"><span></span></button></div>
  <div class="setting"><div><strong>Account</strong><div class="muted">${signedIn ? "Signed in as " + (currentUser.email || currentUser.username) : "Log in or create your Keja account"}</div></div><button class="chip" id="loginBtn">${signedIn ? "Log out" : "Log in"}</button></div>
+ ${signedIn ? `<div class="setting" style="margin-top:10px"><div><strong>Switch account</strong><div class="muted">Log in as someone else without losing this session first</div></div><button class="chip" id="switchAccountBtn">Switch</button></div>` : ""}
  </div>`;
   document.getElementById("darkSwitch").onclick = toggleDark;
   document.querySelectorAll(".theme-card").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
   const dash = document.getElementById("dashBtn"); if (dash) dash.onclick = () => goto(currentUser.is_admin ? "admin" : "landlord");
   const ldash = document.getElementById("landlordDashBtn"); if (ldash) ldash.onclick = () => goto("landlord");
   document.getElementById("loginBtn").onclick = () => { signedIn ? logout() : openLogin(); };
+  const switchBtn = document.getElementById("switchAccountBtn");
+  if (switchBtn) switchBtn.onclick = () => openLogin();
 
   if (signedIn) {
     api("/properties/interested").then(list => {
