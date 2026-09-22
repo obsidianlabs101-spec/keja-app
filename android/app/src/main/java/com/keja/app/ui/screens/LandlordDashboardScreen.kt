@@ -1,6 +1,10 @@
 package com.keja.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -206,6 +210,23 @@ private fun BecomeLandlordForm(onDone: () -> Unit) {
     }
 }
 
+private fun copyUriToTempFile(context: android.content.Context, uri: android.net.Uri): java.io.File? {
+    return try {
+        val ext = when (context.contentResolver.getType(uri)) {
+            "image/png" -> ".png"
+            "image/webp" -> ".webp"
+            else -> ".jpg"
+        }
+        val temp = java.io.File.createTempFile("keja_upload_", ext, context.cacheDir)
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            temp.outputStream().use { output -> input.copyTo(output) }
+        }
+        temp
+    } catch (e: Exception) {
+        null
+    }
+}
+
 @Composable
 private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
@@ -219,6 +240,12 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     var desc by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var publishStatus by remember { mutableStateOf<String?>(null) }
+    var selectedImages by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+    ) { uris -> if (uris.isNotEmpty()) selectedImages = uris }
 
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
         Text("New listing", fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -232,7 +259,31 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
         KejaTextField(landmark, { landmark = it }, "Nearby landmark")
         Spacer(Modifier.height(12.dp))
         KejaTextField(desc, { desc = it }, "Description")
+
+        Spacer(Modifier.height(14.dp))
+        Text("Photos", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            selectedImages.forEach { uri ->
+                coil.compose.AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.size(64.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
+                )
+            }
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .border(1.dp, Color.Gray.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .clickable { imagePicker.launch("image/*") },
+                contentAlignment = Alignment.Center,
+            ) { Text("+", fontSize = 24.sp, color = Color.Gray) }
+        }
+
         error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFEF4444), fontSize = 12.sp) }
+        publishStatus?.let { Spacer(Modifier.height(8.dp)); Text(it, fontSize = 12.sp) }
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             KejaSecondaryButton(text = "Cancel", onClick = onCancel, modifier = Modifier.weight(1f))
@@ -240,9 +291,10 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                 val priceValue = price.toDoubleOrNull()
                 if (priceValue == null || location.isBlank()) { error = "Price and location are required."; return@KejaPrimaryButton }
                 loading = true
+                error = null
                 scope.launch {
                     try {
-                        repo.createProperty(
+                        val prop = repo.createProperty(
                             PropertyCreateRequest(
                                 title = "$type in $location",
                                 description = desc.ifBlank { null },
@@ -255,6 +307,14 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                                 proximity_note = landmark.ifBlank { null },
                             )
                         )
+                        selectedImages.forEachIndexed { index, uri ->
+                            publishStatus = "Uploading photo ${index + 1} of ${selectedImages.size}…"
+                            val file = copyUriToTempFile(context, uri)
+                            if (file != null) {
+                                runCatching { repo.uploadImage(prop.id, file, isMain = index == 0) }
+                                file.delete()
+                            }
+                        }
                         onPublished()
                     } catch (e: ApiException) {
                         error = e.message

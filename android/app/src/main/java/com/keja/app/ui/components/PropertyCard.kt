@@ -47,6 +47,11 @@ fun ThemedCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, con
     val clickMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
 
     if (palette.style == KejaThemeStyle.RANGI) {
+        // The shadow box uses matchParentSize() so it exactly fills
+        // whatever size the content box below determines — the content
+        // box must NOT also use matchParentSize(), or neither box has
+        // anything to measure against and the whole thing collapses to
+        // zero size (this was the "Rangi shows nothing at all" bug).
         Box(modifier) {
             Box(
                 Modifier
@@ -57,7 +62,6 @@ fun ThemedCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, con
             )
             Box(
                 Modifier
-                    .matchParentSize()
                     .clip(KejaShapes.card)
                     .background(palette.card)
                     .border(2.dp, palette.text, KejaShapes.card)
@@ -86,7 +90,7 @@ fun PropertyCard(property: Property, modifier: Modifier = Modifier, onClick: () 
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .height(200.dp)
                     .clip(KejaShapes.propertyImage)
             )
             Column(Modifier.padding(14.dp)) {
@@ -127,6 +131,6 @@ fun TagPill(text: String) {
 @Composable
 fun StatusPill(label: String, bg: androidx.compose.ui.graphics.Color, fg: androidx.compose.ui.graphics.Color) {
     Box(Modifier.clip(KejaShapes.pill).background(bg).padding(horizontal = 9.dp, vertical = 4.dp)) {
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg)
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, softWrap = false)
     }
 }

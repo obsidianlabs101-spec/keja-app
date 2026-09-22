@@ -43,13 +43,17 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-
-  // Only handle same-origin requests — the backend API lives on a
-  // different origin (Render) and should always go straight to the
-  // network, never through this cache.
-  if (url.origin !== self.location.origin) return;
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  const sameOrigin = url.origin === self.location.origin;
+  const isImage = event.request.destination === "image";
+
+  // Cache same-origin app-shell assets AND any image response — property
+  // photos live on other origins entirely (the backend, Supabase
+  // Storage), and a same-origin-only rule was silently never caching
+  // them at all. Everything else cross-origin (API calls) still always
+  // goes straight to the network.
+  if (!sameOrigin && !isImage) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

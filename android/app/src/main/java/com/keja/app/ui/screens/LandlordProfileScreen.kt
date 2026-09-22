@@ -52,7 +52,7 @@ fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty
                 Text("No other listings from this landlord yet", color = palette.muted)
             }
             else -> LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Fixed(1),
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),

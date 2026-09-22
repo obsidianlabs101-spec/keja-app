@@ -61,7 +61,7 @@ fun InterestedScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProp
                 Text("Nothing saved yet — swipe right on something you like in Discover.", color = palette.muted, modifier = Modifier.padding(30.dp))
             }
             else -> LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Fixed(1),
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
