@@ -2,6 +2,7 @@ package com.keja.app.data.network
 
 import com.keja.app.data.model.*
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -78,4 +79,21 @@ interface KejaApi {
 
     @GET("admin/platform-stats")
     suspend fun adminStats(): Response<AdminStats>
+
+    @GET("ads/{placement}")
+    suspend fun activeAd(@Path("placement") placement: String): Response<ActiveAdResponse>
+
+    @GET("admin/ads")
+    suspend fun adminAds(): Response<AdListResponse>
+
+    @Multipart
+    @POST("admin/ads")
+    suspend fun adminCreateAd(
+        @Part("placement") placement: RequestBody,
+        @Part("link_url") linkUrl: RequestBody?,
+        @Part file: MultipartBody.Part,
+    ): Response<AdSlotDto>
+
+    @PATCH("admin/ads/{id}")
+    suspend fun adminUpdateAd(@Path("id") id: String, @Body body: AdUpdateRequest): Response<AdSlotDto>
 }

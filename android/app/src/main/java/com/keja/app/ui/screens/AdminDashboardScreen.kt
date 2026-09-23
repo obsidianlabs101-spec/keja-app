@@ -2,6 +2,8 @@ package com.keja.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +32,7 @@ fun AdminDashboardScreen(onBack: () -> Unit) {
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().background(palette.bg).padding(20.dp)) {
+    Column(Modifier.fillMaxSize().background(palette.bg).verticalScroll(rememberScrollState()).padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("KEJA ADMIN", color = palette.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -71,5 +73,8 @@ fun AdminDashboardScreen(onBack: () -> Unit) {
                 }
             }
         }
+        Spacer(Modifier.height(24.dp))
+        AdminAdsSection()
+        Spacer(Modifier.height(24.dp))
     }
 }

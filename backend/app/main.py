@@ -7,6 +7,7 @@ from app.api.v1.admin_extra import router as admin_extra_router
 from app.api.v1.users import router as user_router
 from app.api.v1.properties import router as property_router
 from app.api.v1.contact_unlock import router as contact_unlock_router
+from app.api.v1.ads import public_router as ads_public_router, admin_router as ads_admin_router
 
 from app.core.config import settings
 from app.core.database import Base
@@ -29,6 +30,7 @@ from app.models.taxonomy_entry import TaxonomyEntry  # noqa: F401
 
 from app.models.property import Property  # noqa: F401
 from app.models.property_image import PropertyImage  # noqa: F401
+from app.models.ad_slot import AdSlot  # noqa: F401
 from app.models.interested_property import InterestedProperty, PropertySwipe  # noqa: F401
 from app.models.contact_unlock import ContactUnlock, ContactUnlockPoolEntry  # noqa: F401
 
@@ -139,6 +141,8 @@ app.include_router(admin_extra_router)
 app.include_router(user_router)
 app.include_router(property_router)
 app.include_router(contact_unlock_router)
+app.include_router(ads_public_router)
+app.include_router(ads_admin_router)
 app.include_router(media_router)
 
 

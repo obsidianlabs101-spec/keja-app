@@ -134,9 +134,10 @@ function home() {
    <button class="category-card" data-cat="airbnb"><span class="cat-icon">✦</span><strong>Airbnb</strong><small>Short stays</small></button>
    <button class="category-card" data-cat="commercial"><span class="cat-icon">▦</span><strong>Shops / Commercial</strong><small>Business spaces</small></button>
  </div>
- <div class="ad">ADVERTISEMENT</div>
+ <div class="ad" data-ad-slot="home">ADVERTISEMENT</div>
  <div class="section-head"><h2>Popular around Nairobi</h2></div><div class="chips"><button class="chip" data-area="Kilimani">Kilimani</button><button class="chip" data-area="Westlands">Westlands</button><button class="chip" data-area="Roysambu">Roysambu</button><button class="chip" data-area="Kasarani">Kasarani</button><button class="chip" data-area="Kahawa">Kahawa</button></div>
  <div class="section-head"><h2>Recommended for you</h2><button class="chip" id="discoverBtn">See all</button></div><div class="grid" id="homeGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
+  hydrateAds();
 
   document.getElementById("discoverBtn").onclick = () => goto("discover");
   document.getElementById("searchBtn").onclick = () => search();
@@ -201,8 +202,9 @@ function discover() {
 
   app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
  <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">Loading…</div></div>
- <div class="swipe-hint">Scroll up or down to browse the next property</div><div class="ad">ADVERTISEMENT</div></section>`;
+ <div class="swipe-hint">Scroll up or down to browse the next property</div><div class="ad" data-ad-slot="discover">ADVERTISEMENT</div></section>`;
 
+  hydrateAds();
   api("/properties/discover?limit=30").then(list => {
     discoverQueue = list;
     const scroller = document.getElementById("discoverScroll");
@@ -430,10 +432,17 @@ function admin() {
   app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">KEJA ADMIN</div><h1>Admin dashboard</h1></div><span class="tag">ADMIN</span></div>
  <div class="stats" id="adminStats"><div class="stat">Total properties<strong>…</strong></div><div class="stat">Active landlords<strong>…</strong></div><div class="stat">Total users<strong>…</strong></div><div class="stat">Pending verifications<strong>…</strong></div></div>
  <div class="section-head"><h2>Ad placement</h2><button class="chip" id="adPlacementBtn">Manage ads</button></div>
- <div class="panel"><p class="muted">Create and manage ad slots shown across Home and Discover.</p><div class="ad-placement-row"><div><strong>Home feed</strong><small>Bottom promotional slot</small></div><span class="status available">Active</span></div><div class="ad-placement-row"><div><strong>Discover</strong><small>Between property cards</small></div><span class="status available">Active</span></div></div>
+ <div class="panel" id="adPanel"><p class="muted">Create and manage the ads shown on Home and Discover.</p><div class="ad-placement-row"><div><strong>Home feed</strong><small>Promotional slot under the categories</small></div><span class="status" id="adStatusHome">…</span></div><div class="ad-placement-row"><div><strong>Discover</strong><small>Bottom of the Discover feed</small></div><span class="status" id="adStatusDiscover">…</span></div></div>
  <div class="section-head"><h2>Recent listings</h2></div><div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Location</th></tr></thead><tbody id="adminListingsBody"><tr><td colspan="3">Loading…</td></tr></tbody></table></div></section>`;
 
   document.getElementById("adPlacementBtn").onclick = openAdPlacement;
+  api("/admin/ads").then(r => {
+    [["home", "adStatusHome"], ["discover", "adStatusDiscover"]].forEach(([k, id]) => {
+      const el = document.getElementById(id); if (!el) return;
+      const live = (r.ads || []).some(a => a.placement === k && a.is_active);
+      el.textContent = live ? "Live" : "No ad"; el.className = "status " + (live ? "available" : "");
+    });
+  }).catch(() => {});
 
   api("/admin/platform-stats").then(s => {
     const el = document.getElementById("adminStats");
@@ -702,16 +711,65 @@ function openLogin() {
   draw(); showModal();
 }
 
-/* ---------------- Ad placement (demo — no backend ad system yet) ---------------- */
-function openAdPlacement() {
+/* ---------------- Ads (real, backed by /ads and /admin/ads) ---------------- */
+function escHtml(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function safeHttpUrl(u) { return /^https?:\/\//i.test(u || "") ? u : ""; }
+
+// Fills every <div data-ad-slot="home|discover"> on screen with the active ad
+// for that placement. On any failure or when no ad exists, the dashed
+// "ADVERTISEMENT" placeholder simply stays.
+function hydrateAds() {
+  document.querySelectorAll("[data-ad-slot]").forEach(el => {
+    const placement = el.dataset.adSlot;
+    fetch(API_BASE + "/ads/" + encodeURIComponent(placement)).then(r => r.ok ? r.json() : null).then(d => {
+      if (!d || !d.ad || !document.body.contains(el)) return;
+      const img = `<img src="${escHtml(safeHttpUrl(d.ad.image_url))}" alt="Advertisement" loading="lazy">`;
+      const link = safeHttpUrl(d.ad.link_url);
+      el.classList.add("has-ad");
+      el.innerHTML = link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener noreferrer sponsored">${img}</a>` : img;
+    }).catch(() => {});
+  });
+}
+
+async function openAdPlacement() {
+  const placements = [["home", "Home feed", "Promotional slot under the category buttons"], ["discover", "Discover", "Slot at the bottom of the Discover feed"]];
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Ad placement</h2><button class="close" id="close">×</button></div>
- <p class="muted">Control where advertisements appear and what type of placement is used.</p>
- <div class="ad-setting"><strong>Home feed</strong><label><input type="checkbox" checked> Enabled</label><select><option>Bottom of feed</option><option>After recommended</option></select></div>
- <div class="ad-setting"><strong>Discover feed</strong><label><input type="checkbox" checked> Enabled</label><select><option>Between cards</option><option>After 3 cards</option></select></div>
- <div class="ad-setting"><strong>Property profile</strong><label><input type="checkbox"> Enabled</label><select><option>Below property details</option></select></div>
- <button class="primary" style="width:100%;margin-top:14px" id="saveAds">Save placements</button>`;
+ <p class="muted">Upload an image for a placement. Uploading makes it the live ad and replaces the previous one. JPG, PNG or WEBP, 5MB max.</p><div id="adBody"><div class="empty">Loading…</div></div>`;
   showModal(); document.getElementById("close").onclick = hideModal;
-  document.getElementById("saveAds").onclick = () => { hideModal(); toast("Ad placement settings saved (demo — not yet backed by a real ad system)"); };
+
+  async function draw() {
+    let ads = [];
+    try { ads = (await api("/admin/ads")).ads || []; } catch (e) { toast(e.message); }
+    document.getElementById("adBody").innerHTML = placements.map(([key, label, hint]) => {
+      const cur = ads.find(a => a.placement === key && a.is_active);
+      return `<div class="ad-editor" data-p="${key}"><strong>${label}</strong><small class="muted" style="display:block;margin:2px 0 8px">${hint}</small>
+ ${cur ? `<img class="ad-preview" src="${escHtml(safeHttpUrl(cur.image_url))}" alt="Current ${label} ad"><div class="muted" style="font-size:12px;margin:6px 0">Live now${cur.link_url ? " · links to " + escHtml(cur.link_url) : " · no link"}</div>` : `<div class="muted" style="font-size:12px;margin-bottom:6px">No live ad — the placeholder is shown.</div>`}
+ <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file">
+ <input type="url" class="ad-link" placeholder="Click-through link (optional, https://…)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
+ <div style="display:flex;gap:8px;margin-top:8px"><button class="primary ad-upload" style="flex:1">${cur ? "Replace ad" : "Upload ad"}</button>${cur ? `<button class="chip ad-save-link">Save link</button><button class="chip ad-off">Turn off</button>` : ""}</div></div>`;
+    }).join("");
+
+    document.querySelectorAll(".ad-editor").forEach(box => {
+      const key = box.dataset.p;
+      const cur = ads.find(a => a.placement === key && a.is_active);
+      const linkVal = () => box.querySelector(".ad-link").value.trim();
+      box.querySelector(".ad-upload").onclick = async (ev) => {
+        const f = box.querySelector(".ad-file").files[0];
+        if (!f) { toast("Choose an image first"); return; }
+        const fd = new FormData(); fd.append("placement", key); fd.append("file", f); if (linkVal()) fd.append("link_url", linkVal());
+        ev.target.disabled = true; ev.target.textContent = "Uploading…";
+        try { await api("/admin/ads", { method: "POST", body: fd }); toast("Ad is live"); } catch (e) { toast(e.message); }
+        draw();
+      };
+      const off = box.querySelector(".ad-off");
+      if (off) off.onclick = async () => { try { await api("/admin/ads/" + cur.id, { method: "PATCH", body: JSON.stringify({ is_active: false }) }); toast("Ad turned off"); } catch (e) { toast(e.message); } draw(); };
+      const sv = box.querySelector(".ad-save-link");
+      if (sv) sv.onclick = async () => { try { await api("/admin/ads/" + cur.id, { method: "PATCH", body: JSON.stringify({ link_url: linkVal() || null }) }); toast("Link saved"); } catch (e) { toast(e.message); } draw(); };
+    });
+  }
+  draw();
 }
 
 /* ---------------- Modal / toast / theme plumbing (unchanged) ---------------- */

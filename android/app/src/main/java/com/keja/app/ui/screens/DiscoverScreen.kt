@@ -84,7 +84,8 @@ fun DiscoverScreen(
 
     val pagerState = rememberPagerState(pageCount = { properties.size })
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Column(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.weight(1f).fillMaxWidth()) {
         VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             val property = properties[page]
             val isSaved = interestedIds.contains(property.id)
@@ -115,6 +116,14 @@ fun DiscoverScreen(
                     .padding(top = 16.dp)
                     .background(Color.Black.copy(alpha = 0.35f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
+        if (!uiHidden) {
+            com.keja.app.ui.components.AdBanner(
+                placement = "discover",
+                modifier = Modifier.padding(horizontal = 12.dp),
+                maxHeight = 64.dp,
             )
         }
     }

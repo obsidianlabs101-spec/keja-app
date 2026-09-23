@@ -110,3 +110,16 @@ data class HostVerificationRequest(val government_id: String, val phone: String)
 data class HostVerificationStatus(val host_verification_status: String?)
 
 data class ApiError(val detail: String? = null, val message: String? = null)
+
+data class AdSlotDto(
+    val id: String,
+    val placement: String,
+    val image_url: String,
+    val link_url: String?,
+    val is_active: Boolean,
+    val created_at: String?,
+)
+
+data class ActiveAdResponse(val ad: AdSlotDto?)
+data class AdListResponse(val ads: List<AdSlotDto> = emptyList())
+data class AdUpdateRequest(val link_url: String? = null, val is_active: Boolean? = null)

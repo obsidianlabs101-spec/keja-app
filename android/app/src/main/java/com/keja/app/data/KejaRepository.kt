@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import java.io.File
 
@@ -94,4 +95,23 @@ class KejaRepository(private val sessionStore: SessionStore) {
         val part = MultipartBody.Part.createFormData("file", file.name, requestFile)
         unwrap(api.uploadImage(propertyId, isMain, part))
     }
+
+    suspend fun activeAd(placement: String): AdSlotDto? = unwrap(api.activeAd(placement)).ad
+    suspend fun adminAds(): List<AdSlotDto> = unwrap(api.adminAds()).ads
+
+    suspend fun adminUploadAd(placement: String, file: File, mime: String, linkUrl: String?): AdSlotDto {
+        val body = file.asRequestBody(mime.toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData("file", file.name, body)
+        val text = "text/plain".toMediaTypeOrNull()
+        return unwrap(
+            api.adminCreateAd(
+                placement.toRequestBody(text),
+                linkUrl?.takeIf { it.isNotBlank() }?.toRequestBody(text),
+                part,
+            ),
+        )
+    }
+
+    suspend fun adminUpdateAd(id: String, linkUrl: String? = null, isActive: Boolean? = null): AdSlotDto =
+        unwrap(api.adminUpdateAd(id, AdUpdateRequest(linkUrl, isActive)))
 }

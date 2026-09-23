@@ -101,6 +101,7 @@ fun HomeScreen(onOpenProperty: (String) -> Unit) {
                 }
                 Spacer(Modifier.height(22.dp))
                 CategoryRow(selected = selectedCategory, onSelect = { selectedCategory = if (selectedCategory == it) null else it })
+                com.keja.app.ui.components.AdBanner(placement = "home")
                 Spacer(Modifier.height(22.dp))
                 Text("Recommended for you", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = palette.text)
                 Spacer(Modifier.height(12.dp))
