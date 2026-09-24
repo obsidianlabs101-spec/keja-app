@@ -298,12 +298,15 @@ function interestedPage() {
 function landlordProfile() {
   const landlordId = viewParams.landlordId;
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">LANDLORD</div><h2 id="landlordName">Loading…</h2></div><button class="chip" id="backBtn">Back</button></div>
+ <div id="landlordMeta"></div>
  <div class="grid" id="landlordGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
   document.getElementById("backBtn").onclick = () => goto("discover");
   if (!landlordId) return;
   api(`/properties/landlord/${landlordId}`).then(data => {
     const nameEl = document.getElementById("landlordName");
     if (nameEl) nameEl.textContent = data.landlord.full_name || data.landlord.username || "Landlord";
+    const meta = document.getElementById("landlordMeta");
+    if (meta) meta.innerHTML = `<div class="lp-head">${avatarHtml(data.landlord.profile_picture, data.landlord.full_name, 84)}${data.landlord.bio ? `<p class="muted">${escHtml(data.landlord.bio)}</p>` : ""}<div class="lp-stats"><div><strong>${data.property_count}</strong><small>Properties uploaded</small></div><div><strong>${data.properties.length}</strong><small>Available now</small></div></div></div>`;
     const grid = document.getElementById("landlordGrid");
     if (!grid) return;
     grid.innerHTML = data.properties.length ? data.properties.map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>No other listings from this landlord yet</h3></div>`;
@@ -383,11 +386,25 @@ function landlord() {
   }
 
   app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">LANDLORD</div><h1>Dashboard</h1></div><button class="primary" id="addProperty">＋ Add property</button></div>
+ <div class="profile-strip"><label class="avatar-upload" title="Change photo">${avatarHtml(currentUser.profile_pic_url, currentUser.name, 60)}<input type="file" id="avatarFile" accept="image/*" hidden></label><div style="flex:1;min-width:0"><strong>${escHtml(currentUser.name || "Your profile")}</strong><div class="muted" style="font-size:12px" id="avatarMsg">Click your photo to change it</div></div><button class="chip" id="viewPublicProfile">View profile</button></div>
  <div class="stats" id="landlordStats"><div class="stat">Active listings<strong>…</strong></div><div class="stat">Property views<strong>…</strong></div><div class="stat">Interested<strong>…</strong></div><div class="stat">Contact unlocks<strong>…</strong></div></div>
  <div class="section-head"><h2>Your listings</h2><span class="muted" id="listingCount"></span></div>
- <div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Proximity</th><th>Status</th><th></th></tr></thead><tbody id="listingsBody"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
+ <div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Views</th><th>Status</th><th></th></tr></thead><tbody id="listingsBody"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
  </section>`;
   document.getElementById("addProperty").onclick = openAdd;
+  document.getElementById("avatarFile").onchange = async (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    const msg = document.getElementById("avatarMsg"); msg.textContent = "Uploading photo…";
+    try {
+      const fd = new FormData(); fd.append("file", f);
+      const r = await api("/users/me/avatar", { method: "POST", body: fd });
+      currentUser.profile_pic_url = r.profile_pic_url;
+      toast("Profile photo updated"); landlord();
+    } catch (e) { msg.textContent = e.message || "Upload failed"; }
+  };
+  document.getElementById("viewPublicProfile").onclick = () => {
+    api(`/properties/landlord/${currentUser.id}`).then(d => openLandlordModal(d, null)).catch(() => toast("Couldn't load your profile"));
+  };
 
   api("/properties/mine/stats").then(s => {
     const el = document.getElementById("landlordStats");
@@ -403,15 +420,30 @@ function renderBecomeLandlord() {
   document.getElementById("becomeBtn").onclick = openBecomeLandlordModal;
 }
 
+function openAmenitiesEditor(p) {
+  if (!p) return;
+  modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">What does it have?</h2><button class="close" id="close">×</button></div>
+ <p class="muted" style="font-size:13px">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</p>${amenityPickerHtml(p.amenities)}
+ <button class="primary" id="saveAmenities" style="width:100%;margin-top:16px">Save</button>`;
+  showModal();
+  document.getElementById("close").onclick = hideModal;
+  document.getElementById("saveAmenities").onclick = async () => {
+    try { await api(`/properties/${p.id}`, { method: "PATCH", body: JSON.stringify({ amenities: pickedAmenities(modal) }) }); hideModal(); toast("Amenities saved"); loadLandlordListings(); }
+    catch (e) { toast(e.message || "Couldn't save"); }
+  };
+}
+
 function loadLandlordListings() {
   api("/properties/mine").then(list => {
     const body = document.getElementById("listingsBody");
     const count = document.getElementById("listingCount");
     if (!body) return;
     if (count) count.textContent = list.length + " active";
-    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}<br><span class="muted">${p.area || p.county}</span></td><td>${money(p.price)}</td><td>${p.proximity_note || "—"}</td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
+    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}<br><span class="muted">${p.area || p.county}${p.proximity_note ? " · " + escHtml(p.proximity_note) : ""}</span></td><td>${money(p.price)}</td><td>👁 ${p.view_count}<br><span class="muted">✦ ${(p.amenities || []).length} amenities</span></td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button> <button class="chip amenBtn">Amenities</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
     body.querySelectorAll("tr[data-id]").forEach(row => {
       const id = row.dataset.id;
+      const amenBtn = row.querySelector(".amenBtn");
+      if (amenBtn) amenBtn.onclick = () => openAmenitiesEditor(list.find(x => x.id === id));
       const btn = row.querySelector(".toggleBookedBtn");
       if (btn) btn.onclick = async () => {
         const wantBooked = btn.textContent.trim() === "Mark booked";
@@ -514,11 +546,17 @@ function openProperty(id) {
 
   api(`/properties/${id}`).then(p => {
     modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${p.property_type}</h2><button class="close" id="close">×</button></div>
- <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">/ month</span></div><p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
+ <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button><div class="hero-overlay"><div class="landlord-chip" id="landlordChip"><div class="avatar-img fallback" style="width:38px;height:38px;max-height:none;border-radius:50%;font-size:16px">K</div><div><b>Landlord</b><small>View profile</small></div></div>${(p.amenities && p.amenities.length) ? `<div class="amenity-row">${amenityCards(p.amenities)}</div>` : ""}</div></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">/ month</span></div><p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
  <div id="contactArea"><button class="primary" style="width:100%;margin-top:8px" id="contactBtn">${p.is_booked ? "This property is booked" : "Get contact"}</button><p class="muted" style="font-size:11px;text-align:center">A KES 50 payment is matched first. The landlord's WhatsApp number is revealed after successful confirmation.</p></div></div>`;
     document.getElementById("close").onclick = hideModal;
     const contactBtn = document.getElementById("contactBtn");
     document.getElementById("viewPhotosBtn").onclick = () => openPhotoViewer(p);
+    api(`/properties/landlord/${p.landlord_id}`).then(d => {
+      const chip = document.getElementById("landlordChip"); if (!chip) return;
+      const n = d.property_count || 0;
+      chip.innerHTML = `${avatarHtml(d.landlord.profile_picture, d.landlord.full_name, 38)}<div><b>${escHtml(d.landlord.full_name)}</b><small>${n ? n + " propert" + (n === 1 ? "y" : "ies") + " · " : ""}View profile</small></div>`;
+      chip.onclick = () => openLandlordModal(d, p.id);
+    }).catch(() => {});
     if (p.is_booked) { contactBtn.disabled = true; return; }
     contactBtn.onclick = () => handleGetContact(p.id);
   }).catch(() => {
@@ -602,10 +640,25 @@ function renderContactClaimForm(propertyId, status) {
   if (!area) return;
   const canGoBack = isLoggedIn() && currentUser && !currentUser.referral_bonus_granted;
   area.innerHTML = `${canGoBack ? `<button class="chip" id="backToChoiceBtn" style="margin-bottom:10px">← Back</button>` : ""}
- <div class="ad" style="text-align:left;padding:14px;font-size:12.5px">Go to M-Pesa → Lipa na M-Pesa → Buy Goods and Services<br>Till Number: <b>${MPESA_TILL.till}</b> (${MPESA_TILL.name})<br>Amount: <b>KES ${MPESA_TILL.amount}</b></div>
- <label class="field" style="margin-top:10px"><span>Paste the M-Pesa confirmation SMS (or just the code)</span><textarea id="claimText" rows="3" placeholder="e.g. QGH7XXXXX Confirmed. Ksh50.00 sent..."></textarea></label>
- <p class="muted" id="claimError" style="font-size:12px;min-height:14px"></p>
- <button class="primary" style="width:100%" id="submitClaimBtn">I've paid — verify my code</button>`;
+ <div class="pay-card"><h3>Pay KES ${MPESA_TILL.amount} via M-Pesa</h3><p class="muted" style="margin:2px 0 14px;font-size:12px">One-time payment to unlock this landlord's contact.</p>
+ <ol class="pay-steps">
+  <li><i>1</i><div><b>Open M-Pesa</b><span>Go to Lipa na M-Pesa → Buy Goods and Services.</span></div></li>
+  <li><i>2</i><div><b>Enter the Till number</b><div class="till-box"><div><strong>${MPESA_TILL.till}</strong><small>Business name: ${MPESA_TILL.name}</small></div><button class="chip" id="copyTillBtn" type="button">Copy</button></div></div></li>
+  <li><i>3</i><div><b>Enter the amount</b><span>KES ${MPESA_TILL.amount} — the exact amount, so we can match it.</span></div></li>
+  <li><i>4</i><div><b>Confirm and pay</b><span>Check the name reads ${MPESA_TILL.name}, then enter your M-Pesa PIN.</span></div></li>
+  <li><i>5</i><div><b>Paste your confirmation</b><span>Copy the M-Pesa SMS (it starts with a code like QGH7XXXXX) and paste it below.</span></div></li>
+ </ol>
+ <label class="field" style="margin-top:12px"><span>M-Pesa confirmation message</span><textarea id="claimText" rows="3" placeholder="e.g. QGH7XXXXX Confirmed. Ksh50.00 paid to Keja Kenya…"></textarea></label>
+ <p class="muted" id="claimError" style="font-size:12px;min-height:14px;color:#ef4444"></p>
+ <p class="muted" style="font-size:11px;margin:0 0 10px">We match your payment to your account, usually within a few minutes. Keep the SMS until your contact unlocks.</p>
+ <button class="primary" style="width:100%" id="submitClaimBtn">I've paid — verify my code</button></div>`;
+  document.getElementById("copyTillBtn").onclick = async (ev) => {
+    const btn = ev.currentTarget;
+    try { await navigator.clipboard.writeText(MPESA_TILL.till); } catch (e) {
+      const t = document.createElement("textarea"); t.value = MPESA_TILL.till; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (e2) {} t.remove();
+    }
+    btn.textContent = "Copied ✓";
+  };
   if (canGoBack) document.getElementById("backToChoiceBtn").onclick = () => renderContactChoice(propertyId, status);
   document.getElementById("submitClaimBtn").onclick = async () => {
     const raw = document.getElementById("claimText").value.trim();
@@ -623,7 +676,7 @@ function renderContactClaimForm(propertyId, status) {
 function openAdd() {
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Add property</h2><button class="close" id="close">×</button></div>
  <div class="form-grid" style="margin-top:18px"><label class="field"><span>Property type</span><select id="addType"><option>Bedsitter</option><option>1 Bedroom</option><option>2 Bedroom</option><option>Airbnb</option></select></label>
- <label class="field"><span>Price (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
+ <label class="field"><span>Price (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
  <p class="muted field full" id="addError" style="font-size:12px;min-height:14px"></p>
  <button class="primary field full" id="publish">Publish listing</button></div>`;
   showModal();
@@ -646,6 +699,7 @@ function openAdd() {
           title: `${type} in ${location}`,
           price, property_type: type, county: location, area: location,
           proximity_note: landmark || null, description: desc || null,
+          amenities: pickedAmenities(modal),
         }),
       });
       for (let i = 0; i < files.length; i++) {
@@ -756,6 +810,48 @@ function openLogin() {
     ["authId", "authPass", "authName"].forEach(id => { const el = document.getElementById(id); if (el) el.onkeydown = e => { if (e.key === "Enter") submit(); }; });
   };
   draw(); showModal();
+}
+
+/* ---------------- Amenities + avatars (shared helpers) ---------------- */
+// Keys must match ALLOWED_AMENITIES in backend/app/schemas/property.py.
+const AMENITIES = [
+  { key: "bathroom", label: "Own bathroom", icon: "🛁" }, { key: "balcony", label: "Balcony", icon: "🌇" },
+  { key: "parking", label: "Parking", icon: "🅿️" }, { key: "wifi", label: "WiFi", icon: "📶" },
+  { key: "water", label: "24/7 water", icon: "💧" }, { key: "security", label: "Security", icon: "🛡️" },
+  { key: "cctv", label: "CCTV", icon: "📹" }, { key: "meter", label: "Own KPLC meter", icon: "⚡" },
+  { key: "gated", label: "Gated compound", icon: "🏘️" }, { key: "furnished", label: "Furnished", icon: "🛋️" },
+  { key: "pets", label: "Pets allowed", icon: "🐾" }, { key: "lift", label: "Lift", icon: "🛗" },
+  { key: "generator", label: "Backup power", icon: "🔋" }, { key: "kitchen", label: "Fitted kitchen", icon: "🍳" },
+  { key: "laundry", label: "Laundry area", icon: "🧺" }, { key: "garden", label: "Garden", icon: "🌳" },
+];
+function amenityCards(keys) {
+  return (keys || []).map(k => AMENITIES.find(a => a.key === k)).filter(Boolean)
+    .map(a => `<div class="amenity-card"><span>${a.icon}</span><small>${a.label}</small></div>`).join("");
+}
+function amenityPickerHtml(selected) {
+  selected = selected || [];
+  return `<div class="amenity-picker">${AMENITIES.map(a => `<label class="amenity-chip"><input type="checkbox" value="${a.key}" ${selected.includes(a.key) ? "checked" : ""}><span>${a.icon} ${a.label}</span></label>`).join("")}</div>`;
+}
+function pickedAmenities(root) {
+  return [...root.querySelectorAll(".amenity-picker input:checked")].map(i => i.value);
+}
+function avatarHtml(url, name, size) {
+  const style = `width:${size}px;height:${size}px;max-height:none;border-radius:50%;flex:none`;
+  const src = safeHttpUrl(url);
+  if (src) return `<img class="avatar-img" style="${style};object-fit:cover" src="${escHtml(src)}" alt="">`;
+  const initial = escHtml(((name || "K").trim()[0] || "K").toUpperCase());
+  return `<div class="avatar-img fallback" style="${style};font-size:${Math.round(size * 0.42)}px">${initial}</div>`;
+}
+function openLandlordModal(d, backId) {
+  const L = d.landlord;
+  modal.innerHTML = `<div class="modal-head"><button class="chip" id="lpBack">← Back</button><button class="close" id="close">×</button></div>
+ <div class="lp-head">${avatarHtml(L.profile_picture, L.full_name, 92)}<h2 style="margin:10px 0 2px">${escHtml(L.full_name)}</h2>${L.username ? `<div class="muted">@${escHtml(L.username)}</div>` : ""}${L.bio ? `<p class="muted" style="margin:8px 0 0">${escHtml(L.bio)}</p>` : ""}
+ <div class="lp-stats"><div><strong>${d.property_count}</strong><small>Properties uploaded</small></div><div><strong>${d.properties.length}</strong><small>Available now</small></div></div></div>
+ <div class="lp-list">${d.properties.length ? d.properties.map(p => `<div class="lp-item" data-id="${p.id}"><img src="${escHtml(mediaUrl(p.main_image_url))}" alt=""><div><b>${money(p.price)}</b><span class="muted" style="display:block;font-size:12px">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</span></div></div>`).join("") : `<p class="muted" style="text-align:center">No available listings right now.</p>`}</div>`;
+  showModal();
+  document.getElementById("close").onclick = hideModal;
+  document.getElementById("lpBack").onclick = () => backId ? openProperty(backId) : hideModal();
+  modal.querySelectorAll(".lp-item").forEach(el => el.onclick = () => openProperty(el.dataset.id));
 }
 
 /* ---------------- Ads (real, backed by /ads and /admin/ads) ---------------- */

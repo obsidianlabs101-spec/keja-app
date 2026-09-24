@@ -288,7 +288,7 @@ body.rangi .discover-fab.active{background:var(--coral)}
 .ad-spec{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.5;margin:8px 0}
 /* Property dialog: photos button + full-screen viewer */
 .hero-wrap{position:relative}
-.hero-wrap .view-photos{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700}
+.hero-wrap .view-photos{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700}
 .photo-viewer{position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column}
 .pv-track{flex:1;min-height:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .pv-track::-webkit-scrollbar{display:none}
@@ -309,3 +309,39 @@ body.rangi .discover-fab.active{background:var(--coral)}
 .modal-backdrop{overscroll-behavior:contain}
 body.modal-open{overflow:hidden}
 .photo-viewer{touch-action:pan-x;overscroll-behavior:contain}
+
+/* Landlord chip + amenity cards over the photo */
+.hero-overlay{position:absolute;left:0;right:0;bottom:0;padding:34px 10px 10px;border-radius:0 0 17px 17px;background:linear-gradient(transparent,rgba(0,0,0,.78));display:grid;gap:8px}
+.landlord-chip{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;background:rgba(0,0,0,.45);color:#fff;border-radius:999px;padding:0 14px 0 0;cursor:pointer}
+.landlord-chip b{display:block;font-size:13px}.landlord-chip small{display:block;font-size:11px;opacity:.75}
+.avatar-img{background:var(--primary);color:#fff;display:inline-grid;place-items:center;font-weight:800;border:2px solid #fff;object-fit:cover}
+.avatar-img.fallback{line-height:1}
+.amenity-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x pan-y}
+.amenity-row::-webkit-scrollbar{display:none}
+.amenity-card{flex:none;display:grid;justify-items:center;gap:2px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:14px;padding:7px 11px;font-size:20px;line-height:1}
+.amenity-card small{font-size:10px;font-weight:600;white-space:nowrap}
+.amenity-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.amenity-chip{cursor:pointer}.amenity-chip input{position:absolute;opacity:0;pointer-events:none}
+.amenity-chip span{display:inline-block;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:var(--card);font-size:13px;font-weight:600}
+.amenity-chip input:checked+span{background:var(--primary);border-color:var(--primary);color:#fff}
+/* Landlord profile modal/page */
+.lp-head{text-align:center;padding:6px 0 4px;display:grid;justify-items:center}
+.lp-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:14px 0}
+.lp-stats div{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:12px}
+.lp-stats strong{display:block;font-size:26px}.lp-stats small{color:var(--muted);font-size:11px}
+.lp-list{display:grid;gap:10px}
+.lp-item{display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:16px;cursor:pointer;background:var(--card)}
+.lp-item img{width:76px;height:64px;max-height:none;object-fit:cover;border-radius:12px;flex:none}
+/* Dashboard profile strip */
+.profile-strip{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin-top:16px}
+.avatar-upload{cursor:pointer}
+/* M-Pesa payment steps */
+.pay-card{background:var(--bg);border:1px solid var(--border);border-radius:18px;padding:16px;text-align:left}
+.pay-card h3{margin:0;font-size:17px}
+.pay-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.pay-steps li{display:flex;gap:12px}
+.pay-steps li>i{flex:none;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-style:normal;font-weight:700;font-size:12px;display:grid;place-items:center}
+.pay-steps b{display:block;font-size:14px}.pay-steps span{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+.till-box{display:flex;align-items:center;gap:10px;margin-top:6px;background:#FEF3C7;color:#1F1B0E;border-radius:12px;padding:10px 12px}
+.till-box>div{flex:1}.till-box strong{font-size:22px;letter-spacing:2px;display:block}.till-box small{font-size:11px;color:#5B4E12}
+.hero-wrap img{display:block}
