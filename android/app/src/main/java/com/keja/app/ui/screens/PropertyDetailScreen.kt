@@ -2,7 +2,9 @@ package com.keja.app.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -29,6 +31,7 @@ import com.keja.app.data.ApiException
 import com.keja.app.data.model.ContactUnlockStatus
 import com.keja.app.data.model.Property
 import com.keja.app.ui.components.KejaPrimaryButton
+import com.keja.app.ui.components.KejaSecondaryButton
 import com.keja.app.ui.components.StatusPill
 import com.keja.app.ui.components.formatKes
 import com.keja.app.ui.components.resolveMediaUrl
@@ -57,6 +60,7 @@ fun PropertyDetailScreen(propertyId: String, onBack: () -> Unit, onRequireLogin:
     var claimText by remember { mutableStateOf("") }
     var claimError by remember { mutableStateOf<String?>(null) }
     var claiming by remember { mutableStateOf(false) }
+    var showViewer by remember { mutableStateOf(false) }
 
     LaunchedEffect(propertyId) {
         loading = true
@@ -90,6 +94,20 @@ fun PropertyDetailScreen(propertyId: String, onBack: () -> Unit, onRequireLogin:
                         contentDescription = p.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .clickable { showViewer = true }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        "⤢ Photos" + if (images.size > 1) " (${images.size})" else "",
+                        color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                     )
                 }
                 Box(
@@ -211,6 +229,66 @@ fun PropertyDetailScreen(propertyId: String, onBack: () -> Unit, onRequireLogin:
                     }
                 }
             }
+        }
+
+        if (showViewer) {
+            PhotoViewerOverlay(
+                images = images,
+                startPage = galleryState.currentPage,
+                isBooked = p.is_booked,
+                onBack = { showViewer = false },
+                onContact = {
+                    showViewer = false
+                    if (contactStep == 0) checkContact()
+                },
+            )
+        }
+    }
+}
+
+/** Full-screen swipeable photos. Back (left) returns to the property screen;
+ * Get contact (right) closes the viewer and starts the normal contact flow. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PhotoViewerOverlay(
+    images: List<String?>,
+    startPage: Int,
+    isBooked: Boolean,
+    onBack: () -> Unit,
+    onContact: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val state = rememberPagerState(initialPage = startPage.coerceIn(0, (images.size - 1).coerceAtLeast(0)), pageCount = { images.size })
+    Box(Modifier.fillMaxSize().background(Color.Black).clickable(enabled = false) {}) {
+        HorizontalPager(state = state, modifier = Modifier.fillMaxSize()) { page ->
+            AsyncImage(
+                model = resolveMediaUrl(images[page]),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Text(
+            "${state.currentPage + 1} / ${images.size}",
+            color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 12.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 12.dp, vertical = 5.dp),
+        )
+        Row(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            KejaSecondaryButton(text = "← Back", onClick = onBack)
+            KejaPrimaryButton(text = if (isBooked) "Booked" else "Get contact", enabled = !isBooked, onClick = onContact)
         }
     }
 }
