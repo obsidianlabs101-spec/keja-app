@@ -345,3 +345,25 @@ body.modal-open{overflow:hidden}
 .till-box{display:flex;align-items:center;gap:10px;margin-top:6px;background:#FEF3C7;color:#1F1B0E;border-radius:12px;padding:10px 12px}
 .till-box>div{flex:1}.till-box strong{font-size:22px;letter-spacing:2px;display:block}.till-box small{font-size:11px;color:#5B4E12}
 .hero-wrap img{display:block}
+
+/* Brand kit: logo + loader */
+.brand{line-height:0;letter-spacing:0}
+.brand-logo{height:34px;width:auto;display:block}
+.brand-logo-dark{display:none}
+body.dark .brand-logo-light,body.dark .auth-brand .brand-logo-light{display:none}
+body.dark .brand-logo-dark{display:block}
+.auth-brand{line-height:0}
+.auth-brand .brand-logo{height:38px}
+.keja-loader{display:grid;justify-items:center;gap:.625rem;color:var(--text);font:600 .875rem/1.2 Inter,sans-serif;padding:24px 0}
+.keja-loader svg{overflow:visible}
+.keja-loader__track{fill:none;stroke:#ede9fe;stroke-width:8}
+body.dark .keja-loader__track{stroke:rgba(139,92,246,.25)}
+.keja-loader__orbit{transform-origin:80px 80px;animation:keja-turn 1.4s cubic-bezier(.65,.05,.35,1) infinite}
+.keja-loader__orbit path{fill:#8b5cf6}
+.keja-loader__home{fill:#6d28d9}
+body.dark .keja-loader__home{fill:#8b5cf6}
+.keja-loader__door{fill:#ff6b5b;transform-origin:62px 91px;animation:keja-door 1.4s ease-in-out infinite}
+.keja-loader__knob{fill:#fff7f5}
+@keyframes keja-turn{to{transform:rotate(360deg)}}
+@keyframes keja-door{0%,100%{transform:scaleX(.2);opacity:.45}50%{transform:scaleX(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.keja-loader__orbit,.keja-loader__door{animation:none}}

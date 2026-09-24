@@ -43,7 +43,7 @@ fun AdminDashboardScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(18.dp))
 
         if (loading) {
-            CircularProgressIndicator()
+            com.keja.app.ui.components.KejaLoader()
         } else if (stats == null) {
             Text("Couldn't load admin stats.", color = palette.muted)
         } else {

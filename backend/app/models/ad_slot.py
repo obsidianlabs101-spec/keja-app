@@ -8,7 +8,7 @@ from app.core.database import Base
 
 
 class AdSlot(Base):
-    """One uploaded ad creative for a placement ("home" or "discover").
+    """One uploaded ad creative for a placement ("home" or "interested").
 
     Rule enforced in ad_service: at most ONE active row per placement —
     activating/creating a new ad deactivates the previous one. Old rows are
@@ -23,7 +23,7 @@ class AdSlot(Base):
     __tablename__ = "ad_slots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    placement = Column(String, nullable=False, index=True)  # "home" | "discover"
+    placement = Column(String, nullable=False, index=True)  # "home" | "interested"
     image_url = Column(String, nullable=False)
     link_url = Column(String, nullable=True)
     is_active = Column(Boolean, nullable=False, default=False, server_default="false", index=True)

@@ -23,7 +23,7 @@ import com.keja.app.data.AppContainer
 import com.keja.app.data.model.AdSlotDto
 
 /**
- * Shows the live ad for [placement] ("home" or "discover") from the backend.
+ * Shows the live ad for [placement] ("home" or "interested") from the backend.
  * Renders NOTHING when there is no active ad or the request fails, so an
  * unconfigured slot leaves no empty box. Tapping opens the ad's link (only
  * if it is a real http/https URL).

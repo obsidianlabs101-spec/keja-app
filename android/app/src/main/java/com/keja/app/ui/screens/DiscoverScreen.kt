@@ -71,7 +71,7 @@ fun DiscoverScreen(
     }
 
     if (loading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
         return
     }
 
@@ -119,12 +119,6 @@ fun DiscoverScreen(
             )
         }
     }
-        if (!uiHidden) {
-            com.keja.app.ui.components.AdBanner(
-                placement = "discover",
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-        }
     }
 }
 

@@ -47,7 +47,7 @@ fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty
 
         val d = data
         when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
             d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Couldn't load this profile", color = palette.muted)
             }

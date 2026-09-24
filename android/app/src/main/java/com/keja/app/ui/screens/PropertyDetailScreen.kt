@@ -54,7 +54,7 @@ import kotlinx.coroutines.launch
 
 // Real till number — see frontend/app.js's MPESA_TILL constant, kept in sync.
 private const val MPESA_TILL = "4396353"
-private const val MPESA_NAME = "Keja Kenya"
+private const val MPESA_NAME = "Obsidian Labs"
 private const val MPESA_AMOUNT = 50
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -103,7 +103,7 @@ fun PropertyDetailScreen(
 
     BoxWithConstraints(Modifier.fillMaxSize().background(palette.bg)) {
         if (loading || property == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
             return@BoxWithConstraints
         }
         val p = property!!
@@ -224,7 +224,7 @@ fun PropertyDetailScreen(
                     1 -> {
                         val status = contactStatus
                         when {
-                            status == null -> CircularProgressIndicator()
+                            status == null -> com.keja.app.ui.components.KejaLoader(size = 32.dp)
                             status.status == "unlocked" -> UnlockedContactCard(status)
                             status.status == "awaiting_admin_match" -> {
                                 Text("We're verifying your M-Pesa payment — check back shortly.", color = palette.muted, fontSize = 13.sp)
@@ -404,7 +404,7 @@ private fun MpesaPayCard(
             OutlinedTextField(
                 value = claimText,
                 onValueChange = onClaimChange,
-                placeholder = { Text("e.g. QGH7XXXXX Confirmed. Ksh50.00 paid to Keja Kenya…") },
+                placeholder = { Text("e.g. QGH7XXXXX Confirmed. Ksh50.00 paid to Obsidian Labs…") },
                 modifier = Modifier.fillMaxWidth().height(110.dp),
             )
             claimError?.let {

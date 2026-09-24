@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.ad_slot import AdSlot
 
-PLACEMENTS = ("home", "discover")
+PLACEMENTS = ("home", "interested")
 AD_BUCKET = "ad-images"
 
 

@@ -55,8 +55,9 @@ fun InterestedScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProp
             "Interested", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = palette.text,
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 16.dp),
         )
+        com.keja.app.ui.components.AdBanner(placement = "interested", modifier = Modifier.padding(horizontal = 18.dp))
         when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
             properties.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Nothing saved yet — swipe right on something you like in Discover.", color = palette.muted, modifier = Modifier.padding(30.dp))
             }

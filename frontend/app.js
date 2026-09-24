@@ -5,7 +5,7 @@
  * ============================================================ */
 
 const API_BASE = "https://keja-backend-uqzk.onrender.com";
-const MPESA_TILL = { till: "4396353", name: "Keja Kenya", amount: 50 };
+const MPESA_TILL = { till: "4396353", name: "Obsidian Labs", amount: 50 };
 
 const app = document.getElementById("app");
 const modalBackdrop = document.getElementById("modalBackdrop");
@@ -136,7 +136,7 @@ function home() {
  </div>
  <div class="ad" data-ad-slot="home">ADVERTISEMENT</div>
  <div class="section-head"><h2>Popular around Nairobi</h2></div><div class="chips"><button class="chip" data-area="Kilimani">Kilimani</button><button class="chip" data-area="Westlands">Westlands</button><button class="chip" data-area="Roysambu">Roysambu</button><button class="chip" data-area="Kasarani">Kasarani</button><button class="chip" data-area="Kahawa">Kahawa</button></div>
- <div class="section-head"><h2>Recommended for you</h2><button class="chip" id="discoverBtn">See all</button></div><div class="grid" id="homeGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
+ <div class="section-head"><h2>Recommended for you</h2><button class="chip" id="discoverBtn">See all</button></div><div class="grid" id="homeGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   hydrateAds();
 
   document.getElementById("discoverBtn").onclick = () => goto("discover");
@@ -160,7 +160,7 @@ function home() {
 function categoryPage(cat) {
   const labels = { apartments: "Apartments", airbnb: "Airbnb", commercial: "Shops / Commercial" };
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">KEJA CATEGORIES</div><h2>${labels[cat]}</h2></div><button class="chip" id="backHome">Back</button></div>
- <div class="grid" id="catGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
+ <div class="grid" id="catGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backHome").onclick = () => goto("home");
 
   if (cat === "commercial") {
@@ -201,10 +201,9 @@ function discover() {
   }
 
   app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
- <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">Loading…</div></div>
- <div class="swipe-hint">Scroll up or down to browse the next property</div><div class="ad" data-ad-slot="discover">ADVERTISEMENT</div></section>`;
+ <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div>
+ <div class="swipe-hint">Scroll up or down to browse the next property</div></section>`;
 
-  hydrateAds();
   api("/properties/discover?limit=30").then(list => {
     discoverQueue = list;
     const scroller = document.getElementById("discoverScroll");
@@ -282,7 +281,8 @@ function interestedPage() {
     document.getElementById("intLogin").onclick = () => openLogin();
     return;
   }
-  app.innerHTML = `<section class="hero"><div class="eyebrow">YOUR SAVED PLACES</div><h1>Interested</h1><p>Properties you've saved.</p></section><div id="interestedBody"><div class="empty">Loading…</div></div>`;
+  app.innerHTML = `<section class="hero"><div class="eyebrow">YOUR SAVED PLACES</div><h1>Interested</h1><p>Properties you've saved.</p></section><div class="ad" data-ad-slot="interested">ADVERTISEMENT</div><div id="interestedBody"><div class="empty">${loaderHtml()}</div></div>`;
+  hydrateAds();
   api("/properties/interested").then(list => {
     interestedList = list;
     interestedIds = new Set(list.map(p => p.id));
@@ -299,7 +299,7 @@ function landlordProfile() {
   const landlordId = viewParams.landlordId;
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">LANDLORD</div><h2 id="landlordName">Loading…</h2></div><button class="chip" id="backBtn">Back</button></div>
  <div id="landlordMeta"></div>
- <div class="grid" id="landlordGrid"><div class="empty" style="grid-column:1/-1">Loading…</div></div>`;
+ <div class="grid" id="landlordGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backBtn").onclick = () => goto("discover");
   if (!landlordId) return;
   api(`/properties/landlord/${landlordId}`).then(data => {
@@ -464,12 +464,12 @@ function admin() {
   app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">KEJA ADMIN</div><h1>Admin dashboard</h1></div><span class="tag">ADMIN</span></div>
  <div class="stats" id="adminStats"><div class="stat">Total properties<strong>…</strong></div><div class="stat">Active landlords<strong>…</strong></div><div class="stat">Total users<strong>…</strong></div><div class="stat">Pending verifications<strong>…</strong></div></div>
  <div class="section-head"><h2>Ad placement</h2><button class="chip" id="adPlacementBtn">Manage ads</button></div>
- <div class="panel" id="adPanel"><p class="muted">Create and manage the ads shown on Home and Discover.</p><div class="ad-placement-row"><div><strong>Home feed</strong><small>Promotional slot under the categories</small></div><span class="status" id="adStatusHome">…</span></div><div class="ad-placement-row"><div><strong>Discover</strong><small>Bottom of the Discover feed</small></div><span class="status" id="adStatusDiscover">…</span></div></div>
+ <div class="panel" id="adPanel"><p class="muted">Create and manage the ads shown on Home and Discover.</p><div class="ad-placement-row"><div><strong>Home feed</strong><small>Promotional slot under the categories</small></div><span class="status" id="adStatusHome">…</span></div><div class="ad-placement-row"><div><strong>Interested page</strong><small>Top of the Interested page</small></div><span class="status" id="adStatusInterested">…</span></div></div>
  <div class="section-head"><h2>Recent listings</h2></div><div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Location</th></tr></thead><tbody id="adminListingsBody"><tr><td colspan="3">Loading…</td></tr></tbody></table></div></section>`;
 
   document.getElementById("adPlacementBtn").onclick = openAdPlacement;
   api("/admin/ads").then(r => {
-    [["home", "adStatusHome"], ["discover", "adStatusDiscover"]].forEach(([k, id]) => {
+    [["home", "adStatusHome"], ["interested", "adStatusInterested"]].forEach(([k, id]) => {
       const el = document.getElementById(id); if (!el) return;
       const live = (r.ads || []).some(a => a.placement === k && a.is_active);
       el.textContent = live ? "Live" : "No ad"; el.className = "status " + (live ? "available" : "");
@@ -648,7 +648,7 @@ function renderContactClaimForm(propertyId, status) {
   <li><i>4</i><div><b>Confirm and pay</b><span>Check the name reads ${MPESA_TILL.name}, then enter your M-Pesa PIN.</span></div></li>
   <li><i>5</i><div><b>Paste your confirmation</b><span>Copy the M-Pesa SMS (it starts with a code like QGH7XXXXX) and paste it below.</span></div></li>
  </ol>
- <label class="field" style="margin-top:12px"><span>M-Pesa confirmation message</span><textarea id="claimText" rows="3" placeholder="e.g. QGH7XXXXX Confirmed. Ksh50.00 paid to Keja Kenya…"></textarea></label>
+ <label class="field" style="margin-top:12px"><span>M-Pesa confirmation message</span><textarea id="claimText" rows="3" placeholder="e.g. QGH7XXXXX Confirmed. Ksh50.00 paid to Obsidian Labs…"></textarea></label>
  <p class="muted" id="claimError" style="font-size:12px;min-height:14px;color:#ef4444"></p>
  <p class="muted" style="font-size:11px;margin:0 0 10px">We match your payment to your account, usually within a few minutes. Keep the SMS until your contact unlocks.</p>
  <button class="primary" style="width:100%" id="submitClaimBtn">I've paid — verify my code</button></div>`;
@@ -794,7 +794,7 @@ function openLogin() {
   };
 
   const draw = () => {
-    modal.innerHTML = `<div class="auth-card"><div class="auth-brand">keja<span>.</span></div><button class="close" id="close">×</button>
+    modal.innerHTML = `<div class="auth-card"><div class="auth-brand"><img class="brand-logo brand-logo-light" src="assets/keja-logo.svg" alt="Keja"><img class="brand-logo brand-logo-dark" src="assets/keja-logo-white.svg" alt="" aria-hidden="true"></div><button class="close" id="close">×</button>
   <div class="auth-hero"><div class="auth-orb">♡</div><h2>${mode === "login" ? "Welcome back to Keja" : "Create your Keja account"}</h2><p>Find a place, save the ones you like and message landlords directly.</p></div>
   <div class="auth-tabs"><button class="${mode === "login" ? "active" : ""}" data-mode="login">Log in</button><button class="${mode === "signup" ? "active" : ""}" data-mode="signup">Sign up</button></div>
   ${mode === "signup" ? `<label class="field" style="margin-bottom:12px"><span>Full name</span><input id="authName" placeholder="e.g. Sarah Mwangi"></label>` : ""}
@@ -855,12 +855,17 @@ function openLandlordModal(d, backId) {
 }
 
 /* ---------------- Ads (real, backed by /ads and /admin/ads) ---------------- */
+// Brand loader (from the Keja brand kit): orbiting diamond + opening door.
+function loaderHtml(label) {
+  return `<div class="keja-loader" role="status" aria-live="polite"><svg width="56" height="56" viewBox="0 0 160 160" aria-hidden="true"><circle class="keja-loader__track" cx="80" cy="80" r="54"/><g class="keja-loader__orbit"><path d="M80 17 91 27 80 37 69 27Z"/></g><path class="keja-loader__home" d="M47 75 80 47 113 75V116H47Z"/><rect class="keja-loader__door" x="62" y="79" width="36" height="37" rx="4"/><circle class="keja-loader__knob" cx="91" cy="98" r="3"/></svg><span>${label || "Finding your space…"}</span></div>`;
+}
+
 function escHtml(v) {
   return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 function safeHttpUrl(u) { return /^https?:\/\//i.test(u || "") ? u : ""; }
 
-// Fills every <div data-ad-slot="home|discover"> on screen with the active ad
+// Fills every <div data-ad-slot="home|interested"> on screen with the active ad
 // for that placement. On any failure or when no ad exists, the dashed
 // "ADVERTISEMENT" placeholder simply stays.
 function hydrateAds() {
@@ -877,10 +882,10 @@ function hydrateAds() {
 }
 
 async function openAdPlacement() {
-  const placements = [["home", "Home feed", "Promotional slot under the category buttons"], ["discover", "Discover", "Slot at the bottom of the Discover feed"]];
+  const placements = [["home", "Home feed", "Promotional slot under the category buttons"], ["interested", "Interested page", "Slot at the top of the Interested page"]];
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Ad placement</h2><button class="close" id="close">×</button></div>
  <p class="muted">Upload an image for a placement. Uploading makes it the live ad and replaces the previous one. JPG, PNG or WEBP, 5MB max.</p>
- <div class="ad-spec"><strong>Ad size (same for Home and Discover)</strong><br>Ratio <b>4:1</b> (wide banner). Best: <b>1200 × 300 px</b>; minimum 800 × 200. Keep logos and text inside the centre 80% — the edges can be trimmed on narrow screens.</div><div id="adBody"><div class="empty">Loading…</div></div>`;
+ <div class="ad-spec"><strong>Ad size (same for Home and Interested)</strong><br>Ratio <b>4:1</b> (wide banner). Best: <b>1200 × 300 px</b>; minimum 800 × 200. Keep logos and text inside the centre 80% — the edges can be trimmed on narrow screens.</div><div id="adBody"><div class="empty">${loaderHtml()}</div></div>`;
   showModal(); document.getElementById("close").onclick = hideModal;
 
   async function draw() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "keja-cache-v5";
+const CACHE_NAME = "keja-cache-v6";
 
 // This is a single-page app — index.html, style.css and app.js ARE the
 // entire site. Each asset is fetched and cached individually rather than
@@ -16,6 +16,9 @@ const ASSETS = [
   "assets/icon-maskable-192.png",
   "assets/icon-maskable-512.png",
   "assets/apple-touch-icon.png",
+  "assets/keja-logo.svg",
+  "assets/keja-logo-white.svg",
+  "assets/favicon.svg",
 ];
 
 self.addEventListener("install", (event) => {

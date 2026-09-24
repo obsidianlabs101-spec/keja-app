@@ -108,7 +108,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
         }
 
         if (!checked) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
             return@Column
         }
 

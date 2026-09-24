@@ -111,7 +111,7 @@ fun HomeScreen(onOpenProperty: (String) -> Unit) {
         if (loading) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    CircularProgressIndicator(color = palette.primary)
+                    com.keja.app.ui.components.KejaLoader()
                 }
             }
         } else if (displayedProperties.isEmpty()) {

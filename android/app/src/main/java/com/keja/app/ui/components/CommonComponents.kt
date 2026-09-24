@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -110,7 +111,13 @@ fun KejaTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(buildString { append(title) }, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(
+                if (palette.bg.luminance() < 0.5f) com.keja.app.R.drawable.keja_logo_white else com.keja.app.R.drawable.keja_logo,
+            ),
+            contentDescription = "Keja",
+            modifier = Modifier.height(32.dp),
+        )
         Box(
             Modifier
                 .size(42.dp)
