@@ -181,6 +181,27 @@ def _credit_referrer_if_any(db: Session, ref_code: str | None, new_user: User) -
         context="user",
     ))
 
+    # If the referrer had asked for a specific landlord's number ("share &
+    # unlock free"), this signup is the trigger: spend the credit and send
+    # the number to their Alerts.
+    if earned_contact_bonus:
+        from app.models.contact_unlock import ContactUnlock
+        from app.services.notify_service import notify_contact_ready
+        waiting = (
+            db.query(ContactUnlock)
+            .filter(ContactUnlock.user_id == referrer.id, ContactUnlock.status == "awaiting_referral")
+            .order_by(ContactUnlock.created_at.asc())
+            .first()
+        )
+        if waiting is not None:
+            from datetime import datetime as _dt
+            referrer.free_contact_credits = max(0, (referrer.free_contact_credits or 0) - 1)
+            waiting.status = "unlocked"
+            waiting.matched_code = "FREE_REFERRAL_CREDIT"
+            waiting.unlocked_at = _dt.utcnow()
+            db.add(waiting)
+            notify_contact_ready(db, waiting, commit=False)
+
 
 def create_user(
     db: Session,

@@ -101,6 +101,8 @@ class PropertyRead(BaseModel):
     is_available: bool
     is_booked: bool
     view_count: int
+    review_status: Optional[str] = None
+    review_note: Optional[str] = None
     created_at: Optional[datetime] = None
     images: List[PropertyImageRead] = Field(default_factory=list)
     amenities: List[str] = Field(default_factory=list)

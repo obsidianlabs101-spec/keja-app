@@ -30,6 +30,8 @@ def create_property(db: Session, landlord_id: UUID, data: PropertyCreate) -> Pro
 def update_property(db: Session, prop: Property, data: PropertyUpdate) -> Property:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(prop, field, value)
+    if prop.review_status == "rejected":
+        prop.is_available = False  # a landlord can't re-publish a listing the admin rejected
     db.add(prop)
     db.commit()
     db.refresh(prop)

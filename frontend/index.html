@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Keja — Find a place you'll love</title>
   <meta name="description" content="Discover rental properties across Kenya, swipe to save, and connect with landlords directly.">
   <link rel="manifest" href="manifest.json">
@@ -26,6 +26,7 @@
     <header class="topbar">
       <div class="brand"><img class="brand-logo brand-logo-light" src="assets/keja-logo.svg" alt="Keja"><img class="brand-logo brand-logo-dark" src="assets/keja-logo-white.svg" alt="" aria-hidden="true"></div>
       <div class="top-actions">
+        <button class="icon-btn bell" id="bellBtn" aria-label="Alerts" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="bell-badge" id="bellBadge" hidden>0</span></button>
         <button class="avatar" data-view="profile">SM</button>
       </div>
     </header>

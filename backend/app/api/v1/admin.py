@@ -520,6 +520,12 @@ def verify_host(
     )
     db.commit()
 
+    from app.services.notify_service import notify
+    if action.approve:
+        notify(db, user.id, "landlord_approved", "You're approved as a landlord 🎉", "You can now add properties from the My listings page.")
+    else:
+        notify(db, user.id, "landlord_rejected", "Your landlord application wasn't approved", action.note or "Please check your details and ID photo and apply again.")
+
     return {
         "id": str(user.id),
         "email": user.email,

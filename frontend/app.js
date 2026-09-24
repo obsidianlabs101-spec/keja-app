@@ -84,7 +84,45 @@ async function refreshCurrentUser() {
   }
 }
 
+function navItemsFor(u) {
+  if (u && u.is_admin) return [["admin", "⌂", "Overview"], ["adminNew", "✦", "New"], ["adminLandlords", "☺", "Landlords"], ["adminPayments", "✓", "Payments"], ["adminListings", "▤", "Listings"], ["adminAds", "◎", "Ads"], ["profile", "◉", "Profile"]];
+  if (u && u.is_host) return [["home", "⌂", "Home"], ["discover", "⌕", "Discover"], ["myListings", "▤", "My listings"], ["profile", "◉", "Profile"]];
+  return [["home", "⌂", "Home"], ["discover", "⌕", "Discover"], ["interested", "♡", "Interested"], ["profile", "◉", "Profile"]];
+}
+function buildNav() {
+  const nav = document.querySelector(".bottom-nav"); if (!nav) return;
+  const items = navItemsFor(isLoggedIn() ? currentUser : null);
+  nav.classList.toggle("scroll", items.length > 5);
+  nav.style.gridTemplateColumns = items.length > 5 ? "" : `repeat(${items.length},1fr)`;
+  nav.innerHTML = items.map(([v, i, l]) => `<button data-view="${v}" class="nav-item ${v === currentView ? "active" : ""}"><span>${i}</span><small>${l}</small><b class="nav-badge" id="nb-${v}" hidden></b></button>`).join("");
+  nav.querySelectorAll(".nav-item").forEach(x => x.onclick = () => goto(x.dataset.view));
+  if (isLoggedIn() && currentUser && currentUser.is_admin) refreshAdminBadges();
+}
+function refreshAdminBadges() {
+  api("/admin/keja/overview").then(o => {
+    [["adminNew", o.unreviewed_properties], ["adminLandlords", o.pending_landlords], ["adminPayments", o.pending_payments]].forEach(([v, n]) => {
+      const el = document.getElementById("nb-" + v); if (!el) return;
+      el.textContent = n > 99 ? "99+" : n; el.hidden = !n;
+    });
+  }).catch(() => {});
+}
+// The bell (alerts) — logged-in renters and landlords only.
+let unreadAlerts = 0;
+function updateBell() {
+  const btn = document.getElementById("bellBtn"); if (!btn) return;
+  const show = isLoggedIn() && currentUser && !currentUser.is_admin;
+  btn.hidden = !show;
+  if (!show) return;
+  api("/users/notifications?context=user").then(list => {
+    unreadAlerts = list.filter(n => !n.read).length;
+    const b = document.getElementById("bellBadge");
+    b.textContent = unreadAlerts > 9 ? "9+" : unreadAlerts; b.hidden = !unreadAlerts;
+  }).catch(() => {});
+}
+setInterval(() => { if (!document.hidden) { updateBell(); if (currentUser && currentUser.is_admin) refreshAdminBadges(); } }, 60000);
+
 function updateAvatar() {
+  buildNav(); updateBell();
   const el = document.querySelector(".avatar");
   if (!el) return;
   if (currentUser && (currentUser.name || currentUser.username)) {
@@ -95,7 +133,13 @@ function updateAvatar() {
 }
 
 /* ---------------- Render dispatch ---------------- */
+const ADMIN_VIEWS = ["admin", "adminNew", "adminLandlords", "adminPayments", "adminListings", "adminAds", "profile", "alerts"];
 function render() {
+  // Role-based pages: admins only see admin pages; landlords get "My listings" instead of Interested.
+  if (isLoggedIn() && currentUser) {
+    if (currentUser.is_admin && !ADMIN_VIEWS.includes(currentView)) currentView = "admin";
+    else if (currentUser.is_host && !currentUser.is_admin && currentView === "interested") currentView = "myListings";
+  }
   document.querySelectorAll(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.view === currentView));
   if (currentView === "home") home();
   if (currentView === "discover") discover();
@@ -103,6 +147,13 @@ function render() {
   if (currentView === "profile") profile();
   if (currentView === "landlord") landlord();
   if (currentView === "admin") admin();
+  if (currentView === "adminNew") adminNew();
+  if (currentView === "adminLandlords") adminLandlords();
+  if (currentView === "adminPayments") adminPayments();
+  if (currentView === "adminListings") adminListings();
+  if (currentView === "adminAds") adminAds();
+  if (currentView === "myListings") myListings();
+  if (currentView === "alerts") alertsPage();
   if (currentView === "landlordProfile") landlordProfile();
   localStorage.setItem("kejaView", currentView);
 }
@@ -457,17 +508,177 @@ function loadLandlordListings() {
   });
 }
 
-/* ---------------- Admin dashboard ---------------- */
+/* ---------------- Admin: separate page per function ---------------- */
+function adminGuard() {
+  if (!isLoggedIn() || !currentUser || !currentUser.is_admin) { requireCapability(false, "Admin", "admin"); return false; }
+  return true;
+}
+function timeAgo(iso) {
+  if (!iso) return "";
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return Math.floor(s / 86400) + " d ago";
+}
+function adminHead(eyebrow, title, sub) {
+  return `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><span class="tag">ADMIN</span></div><p class="muted" style="margin:6px 0 16px">${sub}</p>`;
+}
+function askText(title, placeholder, confirmLabel, cb, required) {
+  modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${escHtml(title)}</h2><button class="close" id="close">×</button></div>
+ <label class="field" style="margin-top:12px"><textarea id="askInput" rows="3" placeholder="${escHtml(placeholder)}"></textarea></label>
+ <p class="muted" id="askErr" style="font-size:12px;min-height:14px;color:#ef4444"></p>
+ <button class="primary" style="width:100%" id="askOk">${escHtml(confirmLabel)}</button>`;
+  showModal();
+  document.getElementById("close").onclick = hideModal;
+  document.getElementById("askOk").onclick = () => {
+    const v = document.getElementById("askInput").value.trim();
+    if (required && !v) { document.getElementById("askErr").textContent = "Please add a short reason."; return; }
+    hideModal(); cb(v);
+  };
+}
+function confirmBox(title, text, confirmLabel, cb) {
+  modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${escHtml(title)}</h2><button class="close" id="close">×</button></div>
+ <p class="muted" style="margin:10px 0 16px">${escHtml(text)}</p>
+ <div style="display:flex;gap:10px"><button class="chip" style="flex:1" id="cbNo">Cancel</button><button class="primary danger" style="flex:1" id="cbYes">${escHtml(confirmLabel)}</button></div>`;
+  showModal();
+  document.getElementById("close").onclick = hideModal;
+  document.getElementById("cbNo").onclick = hideModal;
+  document.getElementById("cbYes").onclick = () => { hideModal(); cb(); };
+}
+
 function admin() {
-  if (!isLoggedIn() || !currentUser || !currentUser.is_admin) { requireCapability(false, "Admin", "admin"); return; }
+  if (!adminGuard()) return;
+  const tiles = [
+    ["adminNew", "New listings", "unreviewed_properties", "Review newly posted properties"],
+    ["adminLandlords", "Landlord applications", "pending_landlords", "Approve landlords and check their ID"],
+    ["adminPayments", "Payment messages", "pending_payments", "Review pasted M-Pesa messages"],
+    ["adminListings", "All listings", "total_properties", "Reject, or mark as booked"],
+  ];
+  app.innerHTML = adminHead("KEJA ADMIN", "Overview", "What needs your attention right now.") +
+    `<div class="stats" id="adminStats">${tiles.map(([v, t]) => `<button class="stat admin-tile" data-go="${v}">${t}<strong>…</strong></button>`).join("")}<div class="stat">Total users<strong id="tileUsers">…</strong></div></div></section>`;
+  document.querySelectorAll(".admin-tile").forEach(b => b.onclick = () => goto(b.dataset.go));
+  api("/admin/keja/overview").then(o => {
+    document.getElementById("adminStats").innerHTML = tiles.map(([v, t, k, sub]) => `<button class="stat admin-tile" data-go="${v}">${t}<strong>${o[k]}</strong><small class="muted">${sub}</small></button>`).join("") + `<div class="stat">Total users<strong>${o.total_users}</strong></div>`;
+    document.querySelectorAll(".admin-tile").forEach(b => b.onclick = () => goto(b.dataset.go));
+  }).catch(() => {});
+}
 
-  app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">KEJA ADMIN</div><h1>Admin dashboard</h1></div><span class="tag">ADMIN</span></div>
- <div class="stats" id="adminStats"><div class="stat">Total properties<strong>…</strong></div><div class="stat">Active landlords<strong>…</strong></div><div class="stat">Total users<strong>…</strong></div><div class="stat">Pending verifications<strong>…</strong></div></div>
- <div class="section-head"><h2>Ad placement</h2><button class="chip" id="adPlacementBtn">Manage ads</button></div>
- <div class="panel" id="adPanel"><p class="muted">Create and manage the ads shown on Home and Discover.</p><div class="ad-placement-row"><div><strong>Home feed</strong><small>Promotional slot under the categories</small></div><span class="status" id="adStatusHome">…</span></div><div class="ad-placement-row"><div><strong>Interested page</strong><small>Top of the Interested page</small></div><span class="status" id="adStatusInterested">…</span></div></div>
- <div class="section-head"><h2>Recent listings</h2></div><div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Location</th></tr></thead><tbody id="adminListingsBody"><tr><td colspan="3">Loading…</td></tr></tbody></table></div></section>`;
+function adminPropCard(p, opts) {
+  const badge = p.review_status === "rejected" ? `<span class="pill red">Rejected</span>` : p.is_booked ? `<span class="pill amber">Booked</span>` : p.review_status === "approved" ? `<span class="pill green">Approved</span>` : `<span class="pill">New</span>`;
+  return `<div class="acard" data-id="${p.id}"><img class="acard-img" src="${mediaUrl(p.main_image_url)}" alt="">
+ <div class="acard-body"><div class="acard-top"><strong>${escHtml(p.property_type)} · ${money(p.price)}</strong>${badge}</div>
+ <div class="muted" style="font-size:12px">${escHtml(p.area || p.county || "")} · ${p.image_count} photo${p.image_count === 1 ? "" : "s"} · ${timeAgo(p.created_at)}</div>
+ <div class="muted" style="font-size:12px">Landlord: ${escHtml(p.landlord_name || "—")}${p.landlord_phone ? " · " + escHtml(p.landlord_phone) : ""}</div>
+ ${p.review_note ? `<div class="muted" style="font-size:12px;color:#ef4444">Reason: ${escHtml(p.review_note)}</div>` : ""}
+ <div class="acard-actions">${opts}</div></div></div>`;
+}
+function adminReview(id, action, note, reload) {
+  api(`/admin/keja/properties/${id}/review`, { method: "POST", body: JSON.stringify({ action, note }) })
+    .then(() => { toast(action === "approve" ? "Approved" : "Rejected — landlord notified"); reload(); refreshAdminBadges(); })
+    .catch(e => toast(e.message || "Couldn't update"));
+}
 
-  document.getElementById("adPlacementBtn").onclick = openAdPlacement;
+function adminNew() {
+  if (!adminGuard()) return;
+  app.innerHTML = adminHead("NEW LISTINGS", "New properties", "Newly posted listings that haven't been reviewed yet. They are live until you reject them.") + `<div id="adminBody">${loaderHtml()}</div></section>`;
+  const load = () => api("/admin/keja/properties?review=unreviewed").then(list => {
+    const body = document.getElementById("adminBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(p => adminPropCard(p, `<button class="primary" data-act="approve">Approve</button><button class="chip danger" data-act="reject">Reject</button>`)).join("") : `<div class="empty">Nothing new to review 🎉</div>`;
+    body.querySelectorAll(".acard").forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector('[data-act="approve"]').onclick = () => adminReview(id, "approve", null, load);
+      card.querySelector('[data-act="reject"]').onclick = () => askText("Reject this listing", "Reason for the landlord (e.g. photos unclear)", "Reject listing", note => adminReview(id, "reject", note, load), true);
+    });
+  }).catch(e => { const b = document.getElementById("adminBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load")}</div>`; });
+  load();
+}
+
+function adminLandlords() {
+  if (!adminGuard()) return;
+  app.innerHTML = adminHead("LANDLORDS", "Landlord applications", "Check the ID photo, then approve or reject.") + `<div id="adminBody">${loaderHtml()}</div></section>`;
+  const load = () => api("/admin/hosts/pending").then(list => {
+    const body = document.getElementById("adminBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(u => `<div class="acard col" data-id="${u.id}"><div class="acard-body">
+ <div class="acard-top"><strong>${escHtml(u.full_name || u.email)}</strong><span class="pill">${timeAgo(u.verification_requested_at)}</span></div>
+ <div class="muted" style="font-size:12px">${escHtml(u.email || "")}${u.phone ? " · " + escHtml(u.phone) : ""}</div>
+ <div class="muted" style="font-size:12px">ID number: ${escHtml(u.government_id || "—")}</div>
+ <div class="acard-actions">${u.government_id_image_url ? `<button class="chip" data-act="id">View ID photo</button>` : `<span class="pill red">No ID photo</span>`}<button class="primary" data-act="approve">Approve</button><button class="chip danger" data-act="reject">Reject</button></div></div></div>`).join("") : `<div class="empty">No applications waiting</div>`;
+    body.querySelectorAll(".acard").forEach(card => {
+      const id = card.dataset.id;
+      const idBtn = card.querySelector('[data-act="id"]');
+      if (idBtn) idBtn.onclick = () => viewLandlordId(id);
+      const decide = (approve, note) => api(`/admin/hosts/${id}/verify`, { method: "POST", body: JSON.stringify({ approve, note }) })
+        .then(() => { toast(approve ? "Landlord approved" : "Application rejected"); load(); refreshAdminBadges(); })
+        .catch(e => toast(e.message || "Couldn't update"));
+      card.querySelector('[data-act="approve"]').onclick = () => decide(true, null);
+      card.querySelector('[data-act="reject"]').onclick = () => askText("Reject application", "Reason (shown to the applicant)", "Reject", note => decide(false, note), true);
+    });
+  }).catch(e => { const b = document.getElementById("adminBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load")}</div>`; });
+  load();
+}
+function viewLandlordId(userId) {
+  modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">ID photo</h2><button class="close" id="close">×</button></div><div id="idBody">${loaderHtml()}</div>`;
+  showModal(); document.getElementById("close").onclick = hideModal;
+  api(`/admin/keja/landlords/${userId}/id-image`).then(r => {
+    document.getElementById("idBody").innerHTML = `<img src="data:${r.content_type};base64,${r.data_base64}" alt="ID photo" style="width:100%;border-radius:12px;margin-top:10px">`;
+  }).catch(e => { document.getElementById("idBody").innerHTML = `<p class="muted">${escHtml(e.message || "No ID photo on file")}</p>`; });
+}
+
+function adminPayments() {
+  if (!adminGuard()) return;
+  app.innerHTML = adminHead("PAYMENTS", "Payment messages", "Renters paste their M-Pesa message here. Check it against your till, then tap Show number to send the landlord's number to their Alerts.") + `<div id="adminBody">${loaderHtml()}</div></section>`;
+  const load = () => api("/contact-unlock/admin/pending").then(list => {
+    const body = document.getElementById("adminBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(r => `<div class="acard col" data-id="${r.id}"><div class="acard-body">
+ <div class="acard-top"><strong>${escHtml(r.buyer_name || "Renter")}</strong><span class="pill">${timeAgo(r.buyer_claimed_at)}</span></div>
+ <div class="muted" style="font-size:12px">${r.buyer_phone ? escHtml(r.buyer_phone) + " · " : ""}for ${escHtml(r.property_title || "a property")} · expected ${money(r.amount)}</div>
+ <div class="sms-box">${escHtml(r.buyer_claimed_raw_message || r.buyer_claimed_code || "(empty)")}</div>
+ <div class="muted" style="font-size:12px">Will send: ${escHtml(r.landlord_name || "landlord")} ${r.landlord_phone ? "· " + escHtml(r.landlord_phone) : "(no phone on file!)"}</div>
+ <div class="acard-actions"><button class="primary" data-act="show">Show number</button><button class="chip danger" data-act="reject">Reject</button></div></div></div>`).join("") : `<div class="empty">No payment messages waiting</div>`;
+    body.querySelectorAll(".acard").forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector('[data-act="show"]').onclick = () => api(`/contact-unlock/admin/${id}/show`, { method: "POST" })
+        .then(() => { toast("Number sent to the user's Alerts"); load(); refreshAdminBadges(); }).catch(e => toast(e.message || "Couldn't send"));
+      card.querySelector('[data-act="reject"]').onclick = () => askText("Reject payment message", "Reason for the renter (optional)", "Reject", note =>
+        api(`/contact-unlock/admin/${id}/reject`, { method: "POST", body: JSON.stringify({ reason: note }) }).then(() => { toast("Rejected — user notified"); load(); refreshAdminBadges(); }).catch(e => toast(e.message || "Couldn't reject")), false);
+    });
+  }).catch(e => { const b = document.getElementById("adminBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load")}</div>`; });
+  load();
+}
+
+function adminListings() {
+  if (!adminGuard()) return;
+  let filter = viewParams.filter || "all";
+  app.innerHTML = adminHead("LISTINGS", "All properties", "Reject a listing, or mark it as booked when you know it's taken.") +
+    `<div class="chips" id="adminFilters">${[["all", "All"], ["live", "Live"], ["booked", "Booked"], ["rejected", "Rejected"]].map(([k, l]) => `<button class="chip" data-f="${k}">${l}</button>`).join("")}</div><div id="adminBody" style="margin-top:12px">${loaderHtml()}</div></section>`;
+  let all = [];
+  const draw = () => {
+    document.querySelectorAll("#adminFilters .chip").forEach(c => c.classList.toggle("active", c.dataset.f === filter));
+    const list = all.filter(p => filter === "all" || (filter === "booked" && p.is_booked) || (filter === "rejected" && p.review_status === "rejected") || (filter === "live" && p.is_available));
+    const body = document.getElementById("adminBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(p => adminPropCard(p,
+      `<button class="chip" data-act="book">${p.is_booked ? "Reopen" : "Mark booked"}</button>` +
+      (p.review_status === "rejected" ? `<button class="primary" data-act="approve">Approve</button>` : `<button class="chip danger" data-act="reject">Reject</button>`))).join("") : `<div class="empty">Nothing here</div>`;
+    body.querySelectorAll(".acard").forEach(card => {
+      const id = card.dataset.id, p = all.find(x => x.id === id);
+      card.querySelector('[data-act="book"]').onclick = () => confirmBox(p.is_booked ? "Reopen listing?" : "Mark as booked?", p.is_booked ? "It will show to renters again." : "It will disappear from renters' feeds and the landlord will be told.", p.is_booked ? "Reopen" : "Mark booked", () =>
+        api(`/admin/keja/properties/${id}/force-booked`, { method: "POST", body: JSON.stringify({ booked: !p.is_booked }) }).then(() => { toast("Updated"); load(); }).catch(e => toast(e.message || "Couldn't update")));
+      const rj = card.querySelector('[data-act="reject"]'); if (rj) rj.onclick = () => askText("Reject this listing", "Reason for the landlord", "Reject listing", note => adminReview(id, "reject", note, load), true);
+      const ap = card.querySelector('[data-act="approve"]'); if (ap) ap.onclick = () => adminReview(id, "approve", null, load);
+    });
+  };
+  const load = () => api("/admin/keja/properties?review=all").then(list => { all = list; draw(); }).catch(e => { const b = document.getElementById("adminBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load")}</div>`; });
+  document.querySelectorAll("#adminFilters .chip").forEach(c => c.onclick = () => { filter = c.dataset.f; draw(); });
+  load();
+}
+
+function adminAds() {
+  if (!adminGuard()) return;
+  app.innerHTML = adminHead("ADS", "Ad placement", "The banners shown on Home and on the Interested page.") +
+    `<div class="panel" id="adPanel"><div class="ad-placement-row"><div><strong>Home feed</strong><small>Promotional slot under the categories</small></div><span class="status" id="adStatusHome">…</span></div><div class="ad-placement-row"><div><strong>Interested page</strong><small>Top of the Interested page</small></div><span class="status" id="adStatusInterested">…</span></div></div>
+ <button class="primary" id="adPlacementBtn" style="margin-top:14px;width:100%">Manage ads</button></section>`;
+  document.getElementById("adPlacementBtn").onclick = () => openAdPlacement();
   api("/admin/ads").then(r => {
     [["home", "adStatusHome"], ["interested", "adStatusInterested"]].forEach(([k, id]) => {
       const el = document.getElementById(id); if (!el) return;
@@ -475,21 +686,46 @@ function admin() {
       el.textContent = live ? "Live" : "No ad"; el.className = "status " + (live ? "available" : "");
     });
   }).catch(() => {});
+}
 
-  api("/admin/platform-stats").then(s => {
-    const el = document.getElementById("adminStats");
-    if (!el) return;
-    el.innerHTML = `<div class="stat">Total properties<strong>${s.total_properties}</strong></div><div class="stat">Active landlords<strong>${s.active_landlords}</strong></div><div class="stat">Total users<strong>${s.total_users}</strong></div><div class="stat">Pending verifications<strong>${s.pending_verifications}</strong></div>`;
-  }).catch(() => {});
+/* ---------------- Landlord: My listings (replaces Interested) ---------------- */
+function myListings() {
+  if (!isLoggedIn() || !currentUser || !currentUser.is_host) { requireCapability(false, "Landlord", "landlord"); return; }
+  app.innerHTML = `<section class="hero"><div class="eyebrow">YOUR PROPERTIES</div><h1>My listings</h1><p>Everything you've posted. Delete anything you no longer want listed.</p></section><div id="myListBody">${loaderHtml()}</div>`;
+  const load = () => api("/properties/mine").then(list => {
+    const body = document.getElementById("myListBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(p => `<div class="acard" data-id="${p.id}"><img class="acard-img" src="${mediaUrl(p.main_image_url)}" alt="">
+ <div class="acard-body"><div class="acard-top"><strong>${escHtml(p.property_type)} · ${money(p.price)}</strong>${p.review_status === "rejected" ? `<span class="pill red">Rejected</span>` : p.is_booked ? `<span class="pill amber">Booked</span>` : `<span class="pill green">Live</span>`}</div>
+ <div class="muted" style="font-size:12px">${escHtml(p.area || p.county || "")} · 👁 ${p.view_count} · ${(p.images || []).length} photos</div>
+ ${p.review_status === "rejected" && p.review_note ? `<div class="muted" style="font-size:12px;color:#ef4444">Rejected: ${escHtml(p.review_note)}</div>` : ""}
+ <div class="acard-actions"><button class="chip" data-act="amen">Edit features</button><button class="chip danger" data-act="del">Delete</button></div></div></div>`).join("") : `<div class="empty">You haven't listed anything yet.<br><button class="primary" id="mlAdd" style="margin-top:12px">＋ Add property</button></div>`;
+    const add = document.getElementById("mlAdd"); if (add) add.onclick = openAdd;
+    body.querySelectorAll(".acard").forEach(card => {
+      const id = card.dataset.id, p = list.find(x => x.id === id);
+      card.querySelector('[data-act="amen"]').onclick = () => openAmenitiesEditor(p);
+      card.querySelector('[data-act="del"]').onclick = () => confirmBox("Delete this listing?", "It will be removed from Keja and renters won't see it any more.", "Delete", () =>
+        api(`/properties/${id}`, { method: "DELETE" }).then(() => { toast("Listing deleted"); load(); }).catch(e => toast(e.message || "Couldn't delete")));
+    });
+  }).catch(e => { const b = document.getElementById("myListBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load your listings")}</div>`; });
+  load();
+}
 
-  api("/properties/?limit=20").then(list => {
-    const body = document.getElementById("adminListingsBody");
-    if (!body) return;
-    body.innerHTML = list.length ? list.map(p => `<tr><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}</td><td>${money(p.price)}</td><td>${p.area || p.county}</td></tr>`).join("") : `<tr><td colspan="3">No listings yet</td></tr>`;
-  }).catch(() => {
-    const body = document.getElementById("adminListingsBody");
-    if (body) body.innerHTML = `<tr><td colspan="3">Couldn't load listings</td></tr>`;
-  });
+/* ---------------- Alerts (the bell) ---------------- */
+function alertsPage() {
+  if (!isLoggedIn()) { app.innerHTML = `<div class="empty locked"><div class="emoji">🔔</div><h3>Log in to see your alerts</h3><button class="primary" id="alLogin" style="margin-top:14px">Log in</button></div>`; document.getElementById("alLogin").onclick = () => openLogin(); return; }
+  app.innerHTML = `<section class="hero"><div class="eyebrow">MESSAGES FROM KEJA</div><h1>Alerts</h1><p>Landlord numbers and updates about the properties you asked about.</p></section><div id="alertsBody">${loaderHtml()}</div>`;
+  api("/users/notifications?context=user").then(list => {
+    const body = document.getElementById("alertsBody"); if (!body) return;
+    body.innerHTML = list.length ? list.map(n => {
+      const d = n.data || {};
+      const wa = String(d.phone || "").replace(/\D/g, ""), waFmt = wa.startsWith("0") ? "254" + wa.slice(1) : wa;
+      return `<div class="alert-card ${n.read ? "" : "unread"}"><div class="acard-top"><strong>${escHtml(n.title)}</strong><span class="muted" style="font-size:11px">${timeAgo(n.created_at)}</span></div>
+ ${n.body ? `<div style="margin-top:4px;font-size:14px">${escHtml(n.body)}</div>` : ""}
+ <div class="acard-actions">${d.phone ? `<a class="primary" href="tel:${escHtml(d.phone)}">Call</a><a class="chip" href="https://wa.me/${waFmt}" target="_blank" rel="noopener">WhatsApp</a>` : ""}${d.property_id ? `<button class="chip" data-prop="${escHtml(d.property_id)}">View property</button>` : ""}</div></div>`;
+    }).join("") : `<div class="empty"><div class="emoji">🔔</div>No alerts yet. When a landlord's number is ready, it shows up here.</div>`;
+    body.querySelectorAll("[data-prop]").forEach(b => b.onclick = () => openProperty(b.dataset.prop));
+    if (list.some(n => !n.read)) api("/users/notifications/read-all", { method: "POST" }).then(updateBell).catch(() => {});
+  }).catch(e => { const b = document.getElementById("alertsBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load alerts")}</div>`; });
 }
 
 /* ---------------- Property modal (view + Get Contact) ---------------- */
@@ -588,7 +824,7 @@ function renderContactArea(propertyId, status) {
     return;
   }
   if (status.status === "awaiting_admin_match") {
-    area.innerHTML = `<p class="muted" style="text-align:center">We're verifying your M-Pesa payment — check back shortly.</p><button class="chip" id="resendBtn" style="width:100%">Resend payment code</button>`;
+    area.innerHTML = `<p class="muted" style="text-align:center">We've sent your M-Pesa message to our team. The landlord's number will arrive in your <b>Alerts</b> (the 🔔 at the top) as soon as it's verified.</p><button class="chip" id="resendBtn" style="width:100%">Resend payment code</button>`;
     document.getElementById("resendBtn").onclick = () => renderContactClaimForm(propertyId, status);
     return;
   }
@@ -604,6 +840,25 @@ function renderContactArea(propertyId, status) {
     return;
   }
   renderContactChoice(propertyId, status);
+}
+
+function openReferralInstructions(propertyId, status) {
+  modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Get this number free</h2><button class="close" id="close">×</button></div>
+ <ol class="pay-steps" style="margin-top:14px">
+  <li><i>1</i><div><b>Share your link</b><span>Tap the button below and send your personal link to a friend who doesn't have a Keja account yet.</span></div></li>
+  <li><i>2</i><div><b>Your friend signs up</b><span>They must open your link and create an account. Logging in to an existing account doesn't count.</span></div></li>
+  <li><i>3</i><div><b>The number arrives automatically</b><span>The moment they sign up, the landlord's number is sent to your <b>Alerts</b> (the 🔔 at the top of Home).</span></div></li>
+  <li><i>4</i><div><b>Good to know</b><span>This free unlock works once. Don't want to wait? You can pay KES ${MPESA_TILL.amount} instead.</span></div></li>
+ </ol>
+ <button class="primary" style="width:100%;margin-top:14px" id="startRefBtn">Start &amp; share my link</button>
+ <button class="chip" style="width:100%;margin-top:8px" id="refPayBtn">Pay KES ${MPESA_TILL.amount} instead</button>`;
+  showModal();
+  document.getElementById("close").onclick = hideModal;
+  document.getElementById("refPayBtn").onclick = () => { hideModal(); renderContactClaimForm(propertyId, status); };
+  document.getElementById("startRefBtn").onclick = async () => {
+    try { await api(`/contact-unlock/${propertyId}/request-referral`, { method: "POST" }); } catch (e) { toast(e.message || "Couldn't start"); return; }
+    hideModal(); shareReferralLink(); toast("Waiting for your friend — we'll alert you");
+  };
 }
 
 function shareReferralLink() {
@@ -631,7 +886,7 @@ function renderContactChoice(propertyId, status) {
  <button class="primary" id="payBtn" style="flex:1">Pay KES ${MPESA_TILL.amount}</button>
  </div>
  <p class="muted" style="font-size:11px;text-align:center;margin-top:8px">${canEarnFree ? "Refer a friend who signs up to earn 1 free contact unlock, or pay now." : "A KES " + MPESA_TILL.amount + " payment is matched, then the landlord's WhatsApp is revealed."}</p>`;
-  if (canEarnFree) document.getElementById("shareBtn").onclick = shareReferralLink;
+  if (canEarnFree) document.getElementById("shareBtn").onclick = () => openReferralInstructions(propertyId, status);
   document.getElementById("payBtn").onclick = () => renderContactClaimForm(propertyId, status);
 }
 
@@ -723,14 +978,20 @@ function openBecomeLandlordModal() {
  <p class="muted">Verification is reviewed by our team to keep Keja trustworthy for renters.</p>
  <label class="field"><span>Government ID number</span><input id="govId"></label>
  <label class="field" style="margin-top:10px"><span>Phone for renter contact</span><input id="landlordPhone" value="${(currentUser && currentUser.phone) || ""}"></label>
+ <label class="field" style="margin-top:10px"><span>Photo of your ID (required)</span><input id="idPhoto" type="file" accept="image/*"></label>
+ <p class="muted" style="font-size:11px;margin:4px 0 0">Only our admins can see this. It isn't shown to renters.</p>
  <p class="muted" id="becomeError" style="font-size:12px;min-height:14px"></p>
  <button class="primary" style="width:100%" id="becomeSubmit">Submit for review</button>`;
   showModal();
   document.getElementById("close").onclick = hideModal;
   document.getElementById("becomeSubmit").onclick = async () => {
     const btn = document.getElementById("becomeSubmit");
+    const idFile = document.getElementById("idPhoto").files[0];
+    if (!idFile) { document.getElementById("becomeError").textContent = "Please add a clear photo of your ID."; return; }
     btn.disabled = true; btn.textContent = "Submitting…";
     try {
+      const fd = new FormData(); fd.append("file", idFile);
+      await api("/users/me/id-image", { method: "POST", body: fd });
       await api("/users/host-verification/request", {
         method: "POST",
         body: JSON.stringify({
@@ -940,7 +1201,7 @@ let toastTimer;
 function toast(msg) { const el = document.getElementById("toast"); if (!el) { alert(msg); return; } el.textContent = msg; el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2200); }
 function toggleDark() { dark = !dark; document.body.classList.toggle("dark", dark); localStorage.setItem("kejaDark", dark ? "1" : "0"); render(); }
 
-document.querySelectorAll(".nav-item").forEach(x => x.onclick = () => goto(x.dataset.view));
+document.getElementById("bellBtn").onclick = () => goto("alerts");
 document.querySelector(".avatar").onclick = () => isLoggedIn() ? goto("profile") : openLogin();
 modalBackdrop.onclick = e => { if (e.target === modalBackdrop) hideModal(); };
 document.addEventListener("keydown", e => { if (e.key === "Escape") hideModal(); });
@@ -949,6 +1210,20 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
+}
+
+/* ---------------- Keyboard handling ---------------- */
+// Keep the focused field visible when the on-screen keyboard opens, and hide
+// the bottom nav while it's up so it can't cover the form.
+document.addEventListener("focusin", e => {
+  if (e.target.matches && e.target.matches("input,textarea,select")) {
+    setTimeout(() => { try { e.target.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (x) {} }, 300);
+  }
+});
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const onVV = () => document.body.classList.toggle("kb-open", vv.height < window.innerHeight * 0.75);
+  vv.addEventListener("resize", onVV);
 }
 
 /* ---------------- Boot ---------------- */

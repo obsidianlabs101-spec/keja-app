@@ -406,6 +406,13 @@ def request_host_verify(
             status_code=400,
             detail="User already verified as host"
         )
+
+    from app.models.landlord_id_document import LandlordIdDocument
+    if not db.query(LandlordIdDocument).filter(LandlordIdDocument.user_id == current_user.id).first():
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a clear photo of your ID before applying"
+        )
     
     try:
         updated_user = request_host_verification(db, current_user, data)
@@ -704,6 +711,60 @@ def resubmit_payout(
 def _clean_notification_context(context: str) -> str:
     context = (context or "user").strip().lower()
     return context if context in ("user", "host") else "user"
+
+
+@router.post("/me/id-image")
+async def upload_my_id_image(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Landlord applicants upload a photo of their ID. Stored privately in
+    the database and only viewable by admins (see /admin/keja/landlords)."""
+    import io
+    from app.models.landlord_id_document import LandlordIdDocument
+
+    data = await file.read(6 * 1024 * 1024 + 1)
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > 6 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (6MB max)")
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data))
+        fmt = (img.format or "").upper()
+        img.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="That file is not a valid image")
+    types = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+    if fmt not in types:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG or WEBP photos are allowed")
+
+    doc = db.query(LandlordIdDocument).filter(LandlordIdDocument.user_id == current_user.id).first()
+    if doc:
+        doc.content_type, doc.data = types[fmt], data
+    else:
+        doc = LandlordIdDocument(user_id=current_user.id, content_type=types[fmt], data=data)
+        db.add(doc)
+    current_user.government_id_image_url = f"/admin/keja/landlords/{current_user.id}/id-image"
+    db.add(current_user)
+    db.commit()
+    return {"detail": "ID photo received"}
+
+
+@router.post("/notifications/read-all")
+def mark_all_notifications_read(
+    context: str = "user",
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.query(Notification).filter(
+        Notification.user_id == current_user.id,
+        Notification.context == _clean_notification_context(context),
+        Notification.read == False,  # noqa: E712
+    ).update({"read": True})
+    db.commit()
+    return {"message": "All marked as read"}
 
 
 @router.get("/notifications")

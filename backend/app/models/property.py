@@ -58,6 +58,12 @@ class Property(Base):
     # existing InterestedProperty/ContactUnlock rows referencing it.
     is_removed = Column(Boolean, default=False, nullable=False)
 
+    # Admin moderation. New listings go live immediately but appear in the
+    # admin "New listings" queue as "unreviewed"; the admin can approve them
+    # or reject (hides the listing and tells the landlord why).
+    review_status = Column(String, default="unreviewed", server_default="unreviewed", nullable=True)
+    review_note = Column(String, nullable=True)
+
     view_count = Column(Integer, default=0, nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
