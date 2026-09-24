@@ -25,17 +25,21 @@ data class Property(
     val view_count: Int,
     val created_at: String?,
     val images: List<PropertyImage> = emptyList(),
+    val amenities: List<String> = emptyList(),
 )
 
 data class LandlordSummary(
     val id: String,
     val full_name: String,
     val username: String?,
+    val profile_picture: String? = null,
+    val bio: String? = null,
 )
 
 data class LandlordPropertiesResponse(
     val landlord: LandlordSummary,
     val properties: List<Property>,
+    val property_count: Int = 0,
 )
 
 data class User(
@@ -85,11 +89,15 @@ data class PropertyCreateRequest(
     val county: String,
     val area: String?,
     val proximity_note: String?,
+    val amenities: List<String> = emptyList(),
 )
 data class PropertyUpdateRequest(
     val is_booked: Boolean? = null,
     val is_available: Boolean? = null,
+    val amenities: List<String>? = null,
 )
+
+data class AvatarResponse(val profile_pic_url: String)
 
 data class LandlordStats(
     val active_listings: Int,

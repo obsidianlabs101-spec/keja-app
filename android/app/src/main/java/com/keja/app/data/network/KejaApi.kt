@@ -65,6 +65,10 @@ interface KejaApi {
     @DELETE("properties/{id}/interested")
     suspend fun removeInterested(@Path("id") id: String): Response<ResponseBody>
 
+    @Multipart
+    @POST("users/me/avatar")
+    suspend fun uploadAvatar(@Part file: MultipartBody.Part): Response<AvatarResponse>
+
     @GET("properties/landlord/{id}")
     suspend fun landlordProperties(@Path("id") id: String): Response<LandlordPropertiesResponse>
 

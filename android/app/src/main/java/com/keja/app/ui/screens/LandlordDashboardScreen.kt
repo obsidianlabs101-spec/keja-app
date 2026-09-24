@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +27,12 @@ import com.keja.app.data.model.LandlordStats
 import com.keja.app.data.model.Property
 import com.keja.app.data.model.PropertyCreateRequest
 import com.keja.app.data.model.PropertyUpdateRequest
+import com.keja.app.ui.components.AmenityPicker
+import com.keja.app.ui.components.Amenities
+import com.keja.app.ui.components.Avatar
+import com.keja.app.ui.components.StatusPill
+import com.keja.app.ui.components.resolveMediaUrl
+import com.keja.app.ui.theme.KejaColors
 import com.keja.app.ui.components.KejaPrimaryButton
 import com.keja.app.ui.components.KejaSecondaryButton
 import com.keja.app.ui.components.KejaTextField
@@ -33,7 +41,7 @@ import com.keja.app.ui.theme.LocalKejaPalette
 import kotlinx.coroutines.launch
 
 @Composable
-fun LandlordDashboardScreen(onBack: () -> Unit) {
+fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) -> Unit = {}) {
     val palette = LocalKejaPalette.current
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
@@ -46,6 +54,25 @@ fun LandlordDashboardScreen(onBack: () -> Unit) {
     var stats by remember { mutableStateOf<LandlordStats?>(null) }
     var showAddForm by remember { mutableStateOf(false) }
     var showBecomeForm by remember { mutableStateOf(false) }
+    var editingAmenities by remember { mutableStateOf<Property?>(null) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var avatarMsg by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(user?.profile_pic_url) { if (avatarUrl == null) avatarUrl = user?.profile_pic_url }
+
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            avatarMsg = "Uploading photo…"
+            val file = copyUriToTempFile(context, uri)
+            if (file == null) { avatarMsg = "Couldn't read that image"; return@launch }
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            avatarMsg = try {
+                avatarUrl = repo.uploadAvatar(file, mime)
+                runCatching { repo.refreshMe() }
+                "Profile photo updated"
+            } catch (e: Exception) { e.message ?: "Upload failed" }
+            file.delete()
+        }
+    }
 
     fun refresh() {
         scope.launch {
@@ -115,6 +142,29 @@ fun LandlordDashboardScreen(onBack: () -> Unit) {
             return@Column
         }
 
+        // Profile strip: the landlord's photo (shown on every listing) + public profile shortcut
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(palette.card)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Avatar(
+                url = avatarUrl, name = user?.name, size = 60.dp,
+                modifier = Modifier.clickable { avatarPicker.launch("image/*") },
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(user?.name ?: "Your profile", fontWeight = FontWeight.Bold, color = palette.text)
+                Text(avatarMsg ?: "Tap your photo to change it", fontSize = 11.sp, color = palette.muted)
+            }
+            KejaSecondaryButton(text = "View profile", onClick = { user?.id?.let(onOpenPublicProfile) })
+        }
+        Spacer(Modifier.height(14.dp))
+
         stats?.let { s ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Listings", s.active_listings.toString(), Modifier.weight(1f))
@@ -125,19 +175,57 @@ fun LandlordDashboardScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
 
-        LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            "My properties (${listings.size})",
+            modifier = Modifier.padding(horizontal = 20.dp),
+            fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = palette.text,
+        )
+        Spacer(Modifier.height(8.dp))
+
+        LazyColumn(
+            Modifier.weight(1f),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             if (listings.isEmpty()) {
-                item { Text("No listings yet — tap + Add to publish your first property.", color = palette.muted) }
+                item { Text("No listings yet — tap ＋ Add to publish your first property.", color = palette.muted) }
             }
             items(listings) { p ->
-                LandlordListingRow(p, onToggleBooked = {
-                    scope.launch {
-                        runCatching { repo.updateProperty(p.id, PropertyUpdateRequest(is_booked = !p.is_booked)) }
-                        refresh()
-                    }
-                })
+                LandlordListingRow(
+                    p,
+                    onToggleBooked = {
+                        scope.launch {
+                            runCatching { repo.updateProperty(p.id, PropertyUpdateRequest(is_booked = !p.is_booked)) }
+                            refresh()
+                        }
+                    },
+                    onEditAmenities = { editingAmenities = p },
+                )
             }
         }
+    }
+
+    editingAmenities?.let { target ->
+        var picked by remember(target.id) { mutableStateOf(target.amenities.toSet()) }
+        AlertDialog(
+            onDismissRequest = { editingAmenities = null },
+            title = { Text("What does it have?") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    AmenityPicker(picked) { k -> picked = if (k in picked) picked - k else picked + k }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        runCatching { repo.updateProperty(target.id, PropertyUpdateRequest(amenities = Amenities.all.map { it.key }.filter { it in picked })) }
+                        editingAmenities = null
+                        refresh()
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { editingAmenities = null }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -156,21 +244,41 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit) {
+private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAmenities: () -> Unit) {
     val palette = LocalKejaPalette.current
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(palette.card)
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text("${p.property_type} — ${formatKes(p.price)}", fontWeight = FontWeight.Bold, color = palette.text, fontSize = 14.sp)
-            Text(p.area ?: p.county, fontSize = 12.sp, color = palette.muted)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            coil.compose.AsyncImage(
+                model = resolveMediaUrl(p.main_image_url),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.size(84.dp).clip(RoundedCornerShape(12.dp)),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(p.property_type, fontWeight = FontWeight.Bold, color = palette.text, fontSize = 15.sp)
+                Text(formatKes(p.price) + " / month", fontWeight = FontWeight.SemiBold, color = palette.primary, fontSize = 13.sp)
+                Text(p.area ?: p.county, fontSize = 12.sp, color = palette.muted)
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (p.is_booked) StatusPill("Booked", KejaColors.BookedBg, KejaColors.BookedText)
+                    else StatusPill("Available", KejaColors.AvailableBg, KejaColors.AvailableText)
+                    Text("👁 ${p.view_count}", fontSize = 11.sp, color = palette.muted)
+                    Text("✦ ${p.amenities.size}", fontSize = 11.sp, color = palette.muted)
+                }
+            }
         }
-        KejaSecondaryButton(text = if (p.is_booked) "Mark available" else "Mark booked", onClick = onToggleBooked)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            KejaSecondaryButton(text = if (p.is_booked) "Mark available" else "Mark booked", onClick = onToggleBooked, modifier = Modifier.weight(1f))
+            KejaSecondaryButton(text = "Amenities", onClick = onEditAmenities, modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -242,12 +350,13 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     var loading by remember { mutableStateOf(false) }
     var publishStatus by remember { mutableStateOf<String?>(null) }
     var selectedImages by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+    var amenities by remember { mutableStateOf(setOf<String>()) }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents(),
     ) { uris -> if (uris.isNotEmpty()) selectedImages = uris }
 
-    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
         Text("New listing", fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Spacer(Modifier.height(14.dp))
         KejaTextField(type, { type = it }, "Property type (e.g. Bedsitter, 1 Bedroom, Airbnb)")
@@ -282,6 +391,12 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
             ) { Text("+", fontSize = 24.sp, color = Color.Gray) }
         }
 
+        Spacer(Modifier.height(16.dp))
+        Text("What does it have?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text("Tick everything that applies — renters see these as icons on your listing.", fontSize = 11.sp, color = Color.Gray)
+        Spacer(Modifier.height(8.dp))
+        AmenityPicker(amenities) { k -> amenities = if (k in amenities) amenities - k else amenities + k }
+
         error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFEF4444), fontSize = 12.sp) }
         publishStatus?.let { Spacer(Modifier.height(8.dp)); Text(it, fontSize = 12.sp) }
         Spacer(Modifier.height(16.dp))
@@ -305,6 +420,7 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                                 county = location,
                                 area = location,
                                 proximity_note = landmark.ifBlank { null },
+                                amenities = Amenities.all.map { it.key }.filter { it in amenities },
                             )
                         )
                         selectedImages.forEachIndexed { index, uri ->

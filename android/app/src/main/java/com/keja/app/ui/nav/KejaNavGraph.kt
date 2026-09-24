@@ -98,6 +98,7 @@ fun KejaNavGraph() {
                     propertyId = id,
                     onBack = { navController.popBackStack() },
                     onRequireLogin = { navController.navigate(ROUTE_AUTH) },
+                    onOpenLandlord = { lid -> navController.navigate("landlord-profile/$lid") },
                 )
             }
             composable(
@@ -115,7 +116,10 @@ fun KejaNavGraph() {
                 if (user == null) {
                     LaunchedEffect(Unit) { navController.navigate(ROUTE_AUTH) }
                 } else {
-                    LandlordDashboardScreen(onBack = { navController.popBackStack() })
+                    LandlordDashboardScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenPublicProfile = { lid -> navController.navigate("landlord-profile/$lid") },
+                    )
                 }
             }
             composable(ROUTE_ADMIN_DASHBOARD) {

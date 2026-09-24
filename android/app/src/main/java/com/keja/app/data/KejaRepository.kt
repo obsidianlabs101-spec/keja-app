@@ -96,6 +96,12 @@ class KejaRepository(private val sessionStore: SessionStore) {
         unwrap(api.uploadImage(propertyId, isMain, part))
     }
 
+    suspend fun uploadAvatar(file: File, mime: String): String {
+        val body = file.asRequestBody(mime.toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData("file", file.name, body)
+        return unwrap(api.uploadAvatar(part)).profile_pic_url
+    }
+
     suspend fun activeAd(placement: String): AdSlotDto? = unwrap(api.activeAd(placement)).ad
     suspend fun adminAds(): List<AdSlotDto> = unwrap(api.adminAds()).ads
 

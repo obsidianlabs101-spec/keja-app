@@ -3,7 +3,25 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Keys the clients render as icon cards. Clients keep the label/emoji for
+# each key; the server only guarantees nothing else gets stored.
+ALLOWED_AMENITIES = (
+    "bathroom", "balcony", "parking", "wifi", "water", "security", "cctv",
+    "meter", "gated", "furnished", "pets", "lift", "generator", "kitchen",
+    "laundry", "garden",
+)
+
+
+def _clean_amenities(value):
+    seen, out = set(), []
+    for v in (value or []):
+        k = str(v).strip().lower()
+        if k in ALLOWED_AMENITIES and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
 
 
 class PropertyImageRead(BaseModel):
@@ -28,6 +46,12 @@ class PropertyCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     proximity_note: Optional[str] = None
+    amenities: List[str] = Field(default_factory=list)
+
+    @field_validator("amenities", mode="before")
+    @classmethod
+    def _v_amenities(cls, v):
+        return _clean_amenities(v)
 
 
 class PropertyUpdate(BaseModel):
@@ -42,12 +66,20 @@ class PropertyUpdate(BaseModel):
     proximity_note: Optional[str] = None
     is_available: Optional[bool] = None
     is_booked: Optional[bool] = None
+    amenities: Optional[List[str]] = None
+
+    @field_validator("amenities", mode="before")
+    @classmethod
+    def _v_amenities(cls, v):
+        return None if v is None else _clean_amenities(v)
 
 
 class LandlordSummary(BaseModel):
     id: UUID
     full_name: str
     username: Optional[str] = None
+    profile_picture: Optional[str] = None
+    bio: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -71,6 +103,12 @@ class PropertyRead(BaseModel):
     view_count: int
     created_at: Optional[datetime] = None
     images: List[PropertyImageRead] = Field(default_factory=list)
+    amenities: List[str] = Field(default_factory=list)
+
+    @field_validator("amenities", mode="before")
+    @classmethod
+    def _v_amenities(cls, v):
+        return v or []
 
     class Config:
         from_attributes = True
@@ -89,3 +127,4 @@ class PropertyFilters(BaseModel):
 class LandlordPropertiesResponse(BaseModel):
     landlord: LandlordSummary
     properties: List[PropertyRead]
+    property_count: int = 0  # everything this landlord has uploaded (not removed), incl. booked

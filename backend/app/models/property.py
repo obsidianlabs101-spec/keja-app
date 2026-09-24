@@ -7,7 +7,7 @@ matches the modification spec's "reuse before rebuild" rule.
 """
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -45,6 +45,11 @@ class Property(Base):
     proximity_note = Column(String, nullable=True)  # e.g. "5 min walk to USIU gate"
 
     main_image_url = Column(String, nullable=True)
+
+    # Landlord-chosen feature tags shown as small icon cards on the listing
+    # (keys come from app.schemas.property.ALLOWED_AMENITIES). Stored as a
+    # JSON list; NULL on older rows and treated as [] everywhere.
+    amenities = Column(JSON, nullable=True)
 
     is_available = Column(Boolean, default=True, nullable=False)
     is_booked = Column(Boolean, default=False, nullable=False)

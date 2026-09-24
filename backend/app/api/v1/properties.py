@@ -81,7 +81,8 @@ def public_landlord_properties(landlord_id: UUID, db: Session = Depends(get_db))
     if not landlord:
         raise HTTPException(status_code=404, detail="Landlord not found")
     listings = property_service.list_public_landlord_properties(db, landlord_id)
-    return {"landlord": landlord, "properties": listings}
+    total = len(property_service.list_landlord_properties(db, landlord_id))
+    return {"landlord": landlord, "properties": listings, "property_count": total}
 
 
 @router.get("/interested", response_model=List[PropertyRead])

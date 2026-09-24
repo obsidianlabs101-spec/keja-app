@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -94,6 +94,51 @@ def get_profile(current_user=Depends(get_current_user), db: Session = Depends(ge
         "saka_status": saka_status,
         "saka_status_expires_at": saka_status_expires_at.isoformat() if saka_status_expires_at else None,
     }
+
+
+@router.post("/me/avatar")
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sets the caller's profile picture. Center-crops to a square JPEG and
+    stores it in Supabase Storage (never local disk — Render's is wiped on
+    every deploy). Used for the landlord photo shown on listings."""
+    import io
+    import uuid as _uuid
+    from PIL import Image, ImageOps
+
+    data = await file.read(8 * 1024 * 1024 + 1)
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (8MB max)")
+    try:
+        img = Image.open(io.BytesIO(data))
+        img = ImageOps.exif_transpose(img).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="File is not a valid image")
+
+    w, h = img.size
+    side = min(w, h)
+    left, top = (w - side) // 2, (h - side) // 2
+    img = img.crop((left, top, left + side, top + side)).resize((512, 512))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85)
+
+    from app.services import property_service
+    try:
+        url = property_service.upload_to_supabase_storage(
+            f"avatar_{current_user.id.hex}_{_uuid.uuid4().hex[:8]}.jpg", buf.getvalue(), "image/jpeg"
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    current_user.profile_picture = url
+    db.add(current_user)
+    db.commit()
+    return {"profile_pic_url": url}
 
 
 @router.post("/me/logout-all-sessions")
