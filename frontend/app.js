@@ -461,6 +461,52 @@ function admin() {
 }
 
 /* ---------------- Property modal (view + Get Contact) ---------------- */
+// All photos of a property, main/first-sorted, falling back to the main image.
+function photoList(p) {
+  const list = (p.images && p.images.length)
+    ? p.images.slice().sort((a, b) => a.sort_order - b.sort_order).map(i => i.url)
+    : [p.main_image_url];
+  return list.filter(Boolean);
+}
+
+// Full-screen swipeable photo viewer. Back (left) returns to the property
+// dialog underneath; Contact (right) closes the viewer and runs the same
+// get-contact flow as the dialog's own button.
+function openPhotoViewer(p) {
+  const photos = photoList(p);
+  const v = document.createElement("div");
+  v.className = "photo-viewer";
+  v.innerHTML = `<div class="pv-count" id="pvCount">1 / ${photos.length}</div>
+ <div class="pv-track" id="pvTrack">${photos.map(u => `<div class="pv-slide"><img src="${escHtml(mediaUrl(u))}" alt=""></div>`).join("")}</div>
+ ${photos.length > 1 ? `<button class="pv-nav pv-prev" id="pvPrev" aria-label="Previous photo">‹</button><button class="pv-nav pv-next" id="pvNext" aria-label="Next photo">›</button>` : ""}
+ <div class="pv-bar"><button class="pv-back" id="pvBack" type="button">← Back</button><button class="pv-contact" id="pvContact" type="button"${p.is_booked ? " disabled" : ""}>${p.is_booked ? "Booked" : "Get contact"}</button></div>`;
+  document.body.appendChild(v);
+
+  const track = v.querySelector("#pvTrack");
+  const count = v.querySelector("#pvCount");
+  const index = () => Math.round(track.scrollLeft / track.clientWidth);
+  const go = i => track.scrollTo({ left: Math.max(0, Math.min(photos.length - 1, i)) * track.clientWidth, behavior: "smooth" });
+  track.addEventListener("scroll", () => { count.textContent = (index() + 1) + " / " + photos.length; });
+  if (photos.length > 1) {
+    v.querySelector("#pvPrev").onclick = () => go(index() - 1);
+    v.querySelector("#pvNext").onclick = () => go(index() + 1);
+  }
+  const close = () => { document.removeEventListener("keydown", onKey); v.remove(); };
+  function onKey(e) {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowLeft") go(index() - 1);
+    else if (e.key === "ArrowRight") go(index() + 1);
+  }
+  document.addEventListener("keydown", onKey);
+  v.querySelector("#pvBack").onclick = close;
+  v.querySelector("#pvContact").onclick = () => {
+    close();
+    handleGetContact(p.id);
+    const area = document.getElementById("contactArea");
+    if (area) area.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+}
+
 function openProperty(id) {
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Loading…</h2><button class="close" id="close">×</button></div>`;
   showModal();
@@ -468,10 +514,11 @@ function openProperty(id) {
 
   api(`/properties/${id}`).then(p => {
     modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${p.property_type}</h2><button class="close" id="close">×</button></div>
- <img src="${mediaUrl(p.main_image_url)}" alt=""><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">/ month</span></div><p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
+ <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">/ month</span></div><p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
  <div id="contactArea"><button class="primary" style="width:100%;margin-top:8px" id="contactBtn">${p.is_booked ? "This property is booked" : "Get contact"}</button><p class="muted" style="font-size:11px;text-align:center">A KES 50 payment is matched first. The landlord's WhatsApp number is revealed after successful confirmation.</p></div></div>`;
     document.getElementById("close").onclick = hideModal;
     const contactBtn = document.getElementById("contactBtn");
+    document.getElementById("viewPhotosBtn").onclick = () => openPhotoViewer(p);
     if (p.is_booked) { contactBtn.disabled = true; return; }
     contactBtn.onclick = () => handleGetContact(p.id);
   }).catch(() => {
@@ -736,7 +783,8 @@ function hydrateAds() {
 async function openAdPlacement() {
   const placements = [["home", "Home feed", "Promotional slot under the category buttons"], ["discover", "Discover", "Slot at the bottom of the Discover feed"]];
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Ad placement</h2><button class="close" id="close">×</button></div>
- <p class="muted">Upload an image for a placement. Uploading makes it the live ad and replaces the previous one. JPG, PNG or WEBP, 5MB max.</p><div id="adBody"><div class="empty">Loading…</div></div>`;
+ <p class="muted">Upload an image for a placement. Uploading makes it the live ad and replaces the previous one. JPG, PNG or WEBP, 5MB max.</p>
+ <div class="ad-spec"><strong>Ad size (same for Home and Discover)</strong><br>Ratio <b>4:1</b> (wide banner). Best: <b>1200 × 300 px</b>; minimum 800 × 200. Keep logos and text inside the centre 80% — the edges can be trimmed on narrow screens.</div><div id="adBody"><div class="empty">Loading…</div></div>`;
   showModal(); document.getElementById("close").onclick = hideModal;
 
   async function draw() {
@@ -746,7 +794,7 @@ async function openAdPlacement() {
       const cur = ads.find(a => a.placement === key && a.is_active);
       return `<div class="ad-editor" data-p="${key}"><strong>${label}</strong><small class="muted" style="display:block;margin:2px 0 8px">${hint}</small>
  ${cur ? `<img class="ad-preview" src="${escHtml(safeHttpUrl(cur.image_url))}" alt="Current ${label} ad"><div class="muted" style="font-size:12px;margin:6px 0">Live now${cur.link_url ? " · links to " + escHtml(cur.link_url) : " · no link"}</div>` : `<div class="muted" style="font-size:12px;margin-bottom:6px">No live ad — the placeholder is shown.</div>`}
- <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file">
+ <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file"><div class="ad-note muted" style="font-size:12px;margin-top:4px"></div>
  <input type="text" inputmode="url" autocapitalize="none" class="ad-link" placeholder="Website (optional, e.g. bash.co.ke)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
  <div style="display:flex;gap:8px;margin-top:8px"><button class="primary ad-upload" style="flex:1">${cur ? "Replace ad" : "Upload ad"}</button>${cur ? `<button class="chip ad-save-link">Save link</button><button class="chip ad-off">Turn off</button>` : ""}</div></div>`;
     }).join("");
@@ -755,6 +803,18 @@ async function openAdPlacement() {
       const key = box.dataset.p;
       const cur = ads.find(a => a.placement === key && a.is_active);
       const linkVal = () => box.querySelector(".ad-link").value.trim();
+      box.querySelector(".ad-file").onchange = (ev) => {
+        const f = ev.target.files[0], note = box.querySelector(".ad-note");
+        note.textContent = ""; if (!f) return;
+        const url = URL.createObjectURL(f), im = new Image();
+        im.onload = () => {
+          const r = im.width / im.height; URL.revokeObjectURL(url);
+          note.textContent = Math.abs(r - 4) / 4 > 0.15
+            ? `This image is ${im.width}×${im.height} (${r.toFixed(1)}:1). It will be cropped to fit 4:1 — use 1200×300 for a clean fit.`
+            : `${im.width}×${im.height} — good fit ✓`;
+        };
+        im.src = url;
+      };
       box.querySelector(".ad-upload").onclick = async (ev) => {
         const f = box.querySelector(".ad-file").files[0];
         if (!f) { toast("Choose an image first"); return; }

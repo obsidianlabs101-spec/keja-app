@@ -123,7 +123,6 @@ fun DiscoverScreen(
             com.keja.app.ui.components.AdBanner(
                 placement = "discover",
                 modifier = Modifier.padding(horizontal = 12.dp),
-                maxHeight = 64.dp,
             )
         }
     }

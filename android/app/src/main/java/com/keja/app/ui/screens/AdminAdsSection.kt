@@ -49,7 +49,7 @@ fun AdminAdsSection() {
         Text("Ad placement", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = palette.text)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Upload an image to make it the live ad for a placement. JPG, PNG or WEBP, 5MB max.",
+            "Upload an image to make it the live ad for a placement. JPG, PNG or WEBP, 5MB max.\nSize (same for Home and Discover): 4:1 wide banner, best 1200 × 300 px. Keep logos and text in the centre 80% — edges can be trimmed.",
             fontSize = 12.sp, color = palette.muted,
         )
         message?.let {

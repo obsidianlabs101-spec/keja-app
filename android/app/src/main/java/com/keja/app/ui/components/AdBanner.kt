@@ -3,7 +3,7 @@ package com.keja.app.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -17,7 +17,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.keja.app.data.AppContainer
@@ -30,7 +29,7 @@ import com.keja.app.data.model.AdSlotDto
  * if it is a real http/https URL).
  */
 @Composable
-fun AdBanner(placement: String, modifier: Modifier = Modifier, maxHeight: Dp = 160.dp) {
+fun AdBanner(placement: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
     val uriHandler = LocalUriHandler.current
@@ -50,7 +49,7 @@ fun AdBanner(placement: String, modifier: Modifier = Modifier, maxHeight: Dp = 1
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight)
+                .aspectRatio(4f)
                 .clip(RoundedCornerShape(16.dp))
                 .then(if (link != null) Modifier.clickable { runCatching { uriHandler.openUri(link) } } else Modifier),
         )
