@@ -1,4 +1,5 @@
 # app/services/ad_service.py
+import re
 from typing import List, Optional
 from urllib.parse import urlparse
 from uuid import UUID
@@ -19,15 +20,26 @@ def validate_placement(placement: str) -> str:
 
 
 def clean_link_url(link_url: Optional[str]) -> Optional[str]:
-    """Only http(s) links are allowed — a javascript:/data: link in an ad
-    would be an XSS hole the moment a client renders it as an href."""
+    """Accepts a full URL OR a bare site name like "bash.co.ke" (https://
+    is added). Any other scheme (javascript:, data:, ftp: ...) is rejected —
+    a javascript:/data: link in an ad would be an XSS hole the moment a
+    client renders it as an href."""
     link = (link_url or "").strip()
     if not link:
         return None
-    parsed = urlparse(link)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc or len(link) > 2000:
-        raise ValueError("Link must be a valid http:// or https:// URL")
-    return link
+    if len(link) > 2000 or re.search(r"\s", link):
+        raise ValueError("Enter a valid website, e.g. bash.co.ke")
+    if re.match(r"^https?://", link, re.I):
+        candidate = link
+    elif re.match(r"^[a-z][a-z0-9+.\-]*:(?!\d)", link, re.I) or "://" in link:
+        raise ValueError("Only website links are allowed, e.g. bash.co.ke")
+    else:
+        candidate = "https://" + link.lstrip("/")
+    parsed = urlparse(candidate)
+    host = parsed.hostname or ""
+    if not re.match(r"^([a-z0-9]([a-z0-9\-]*[a-z0-9])?\.)+[a-z]{2,}$", host, re.I):
+        raise ValueError("Enter a valid website, e.g. bash.co.ke")
+    return candidate
 
 
 def upload_ad_image(filename: str, data: bytes, content_type: str) -> str:

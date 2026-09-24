@@ -747,7 +747,7 @@ async function openAdPlacement() {
       return `<div class="ad-editor" data-p="${key}"><strong>${label}</strong><small class="muted" style="display:block;margin:2px 0 8px">${hint}</small>
  ${cur ? `<img class="ad-preview" src="${escHtml(safeHttpUrl(cur.image_url))}" alt="Current ${label} ad"><div class="muted" style="font-size:12px;margin:6px 0">Live now${cur.link_url ? " · links to " + escHtml(cur.link_url) : " · no link"}</div>` : `<div class="muted" style="font-size:12px;margin-bottom:6px">No live ad — the placeholder is shown.</div>`}
  <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file">
- <input type="url" class="ad-link" placeholder="Click-through link (optional, https://…)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
+ <input type="text" inputmode="url" autocapitalize="none" class="ad-link" placeholder="Website (optional, e.g. bash.co.ke)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
  <div style="display:flex;gap:8px;margin-top:8px"><button class="primary ad-upload" style="flex:1">${cur ? "Replace ad" : "Upload ad"}</button>${cur ? `<button class="chip ad-save-link">Save link</button><button class="chip ad-off">Turn off</button>` : ""}</div></div>`;
     }).join("");
 

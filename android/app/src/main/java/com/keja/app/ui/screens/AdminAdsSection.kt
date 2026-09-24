@@ -143,7 +143,7 @@ private fun AdPlacementEditor(
             onClick = { picker.launch("image/*") },
         )
         Spacer(Modifier.height(8.dp))
-        KejaTextField(link, { link = it }, "Click-through link (optional, https://…)")
+        KejaTextField(link, { link = it }, "Website (optional, e.g. bash.co.ke)")
         Spacer(Modifier.height(10.dp))
 
         KejaPrimaryButton(
