@@ -2,6 +2,7 @@ package com.keja.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -104,4 +105,4 @@ fun MyListingsScreen(onOpenProperty: (String) -> Unit, onAddProperty: () -> Unit
 }
 
 private fun Modifier.clickableOpen(onClick: () -> Unit): Modifier =
-    this.then(androidx.compose.foundation.clickable(onClick = onClick))
+    this.clickable(onClick = onClick)
