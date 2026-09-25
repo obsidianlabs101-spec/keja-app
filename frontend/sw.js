@@ -1,4 +1,4 @@
-const CACHE_NAME = "keja-cache-v7";
+const CACHE_NAME = "keja-cache-v8";
 
 // This is a single-page app — index.html, style.css and app.js ARE the
 // entire site. Each asset is fetched and cached individually rather than

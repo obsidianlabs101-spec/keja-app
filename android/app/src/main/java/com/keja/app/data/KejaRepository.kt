@@ -120,4 +120,28 @@ class KejaRepository(private val sessionStore: SessionStore) {
 
     suspend fun adminUpdateAd(id: String, linkUrl: String? = null, isActive: Boolean? = null): AdSlotDto =
         unwrap(api.adminUpdateAd(id, AdUpdateRequest(linkUrl, isActive)))
+
+    // ---- Alerts ----
+    suspend fun notifications(): List<NotificationDto> = unwrap(api.notifications())
+    suspend fun readAllNotifications() { unwrap(api.readAllNotifications()) }
+
+    // ---- Landlord ----
+    suspend fun uploadIdImage(file: File, mime: String) {
+        val body = file.asRequestBody(mime.toMediaTypeOrNull())
+        unwrap(api.uploadIdImage(MultipartBody.Part.createFormData("file", file.name, body)))
+    }
+    suspend fun deleteProperty(id: String) { unwrap(api.deleteProperty(id)) }
+    suspend fun requestReferral(id: String) = unwrap(api.requestReferral(id))
+
+    // ---- Admin ----
+    suspend fun adminOverview() = unwrap(api.adminOverview())
+    suspend fun adminProperties(review: String = "all") = unwrap(api.adminProperties(review))
+    suspend fun adminReviewProperty(id: String, action: String, note: String?) { unwrap(api.adminReviewProperty(id, ReviewPropertyRequest(action, note))) }
+    suspend fun adminForceBooked(id: String, booked: Boolean) { unwrap(api.adminForceBooked(id, ForceBookedRequest(booked))) }
+    suspend fun adminLandlordIdImage(id: String) = unwrap(api.adminLandlordIdImage(id))
+    suspend fun adminPendingLandlords() = unwrap(api.adminPendingLandlords())
+    suspend fun adminVerifyLandlord(id: String, approve: Boolean, note: String?) { unwrap(api.adminVerifyLandlord(id, VerifyHostRequest(approve, note))) }
+    suspend fun adminPendingPayments() = unwrap(api.adminPendingPayments())
+    suspend fun adminShowContact(id: String) { unwrap(api.adminShowContact(id)) }
+    suspend fun adminRejectPayment(id: String, reason: String?) { unwrap(api.adminRejectPayment(id, RejectPaymentRequest(reason))) }
 }

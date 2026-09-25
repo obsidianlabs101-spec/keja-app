@@ -289,8 +289,11 @@ private fun BecomeLandlordForm(onDone: () -> Unit) {
     val scope = rememberCoroutineScope()
     var govId by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
+    var idUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+
+    val idPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) idUri = uri }
 
     Column(Modifier.fillMaxWidth().padding(24.dp)) {
         Text("Become a landlord", fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -300,12 +303,22 @@ private fun BecomeLandlordForm(onDone: () -> Unit) {
         KejaTextField(govId, { govId = it }, "Government ID number")
         Spacer(Modifier.height(12.dp))
         KejaTextField(phone, { phone = it }, "Phone for renter contact")
+        Spacer(Modifier.height(12.dp))
+        KejaSecondaryButton(text = if (idUri != null) "ID photo selected ✓ (tap to change)" else "Add a photo of your ID", onClick = { idPicker.launch("image/*") })
+        Text("Only our admins can see this. It isn't shown to renters.", fontSize = 11.sp, color = Color.Gray)
         error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFEF4444), fontSize = 12.sp) }
         Spacer(Modifier.height(16.dp))
         KejaPrimaryButton(text = if (loading) "Submitting…" else "Submit for review", enabled = !loading, modifier = Modifier.fillMaxWidth()) {
+            val uri = idUri
+            if (uri == null) { error = "Please add a clear photo of your ID."; return@KejaPrimaryButton }
             loading = true
             scope.launch {
                 try {
+                    val temp = copyUriToTempFile(context, uri)
+                    if (temp == null) { error = "Couldn't read that image"; loading = false; return@launch }
+                    val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    repo.uploadIdImage(temp, mime)
+                    temp.delete()
                     repo.requestHostVerification(govId, phone)
                     onDone()
                 } catch (e: ApiException) {

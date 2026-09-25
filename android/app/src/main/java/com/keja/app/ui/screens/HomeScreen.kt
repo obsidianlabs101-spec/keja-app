@@ -29,7 +29,7 @@ import com.keja.app.ui.theme.LocalKejaPalette
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(onOpenProperty: (String) -> Unit) {
+fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) {
     val palette = LocalKejaPalette.current
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
@@ -68,7 +68,10 @@ fun HomeScreen(onOpenProperty: (String) -> Unit) {
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column {
-                Text("WELCOME BACK 👋", color = palette.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("WELCOME BACK 👋", color = palette.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    com.keja.app.ui.components.AlertBell(onClick = onOpenAlerts)
+                }
                 Spacer(Modifier.height(6.dp))
                 Text("Find a place\nyou'll love.", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = palette.text, lineHeight = 34.sp)
                 Spacer(Modifier.height(8.dp))

@@ -26,6 +26,8 @@ data class Property(
     val created_at: String?,
     val images: List<PropertyImage> = emptyList(),
     val amenities: List<String> = emptyList(),
+    val review_status: String? = null,
+    val review_note: String? = null,
 )
 
 data class LandlordSummary(
@@ -131,3 +133,73 @@ data class AdSlotDto(
 data class ActiveAdResponse(val ad: AdSlotDto?)
 data class AdListResponse(val ads: List<AdSlotDto> = emptyList())
 data class AdUpdateRequest(val link_url: String? = null, val is_active: Boolean? = null)
+
+// ---- Alerts (notifications) ----
+data class NotificationDto(
+    val id: String,
+    val type: String?,
+    val title: String,
+    val body: String?,
+    val data: com.google.gson.JsonObject? = null,
+    val read: Boolean = false,
+    val created_at: String? = null,
+) {
+    fun dataString(key: String): String? =
+        data?.get(key)?.takeIf { !it.isJsonNull && it.isJsonPrimitive }?.asString?.takeIf { it.isNotBlank() }
+}
+
+// ---- Admin ----
+data class AdminOverview(
+    val pending_landlords: Int = 0,
+    val unreviewed_properties: Int = 0,
+    val pending_payments: Int = 0,
+    val total_properties: Int = 0,
+    val total_users: Int = 0,
+)
+
+data class AdminPropertyDto(
+    val id: String,
+    val title: String?,
+    val price: Double,
+    val property_type: String?,
+    val county: String?,
+    val area: String?,
+    val main_image_url: String?,
+    val image_count: Int = 0,
+    val is_available: Boolean = true,
+    val is_booked: Boolean = false,
+    val review_status: String? = null,
+    val review_note: String? = null,
+    val created_at: String? = null,
+    val landlord_name: String? = null,
+    val landlord_phone: String? = null,
+)
+
+data class PendingLandlordDto(
+    val id: String,
+    val email: String?,
+    val full_name: String?,
+    val phone: String?,
+    val government_id: String?,
+    val government_id_image_url: String?,
+    val verification_requested_at: String?,
+)
+
+data class PendingPaymentDto(
+    val id: String,
+    val amount: Double = 50.0,
+    val buyer_claimed_code: String?,
+    val buyer_claimed_raw_message: String?,
+    val buyer_claimed_at: String?,
+    val buyer_name: String?,
+    val buyer_phone: String?,
+    val property_title: String?,
+    val landlord_name: String?,
+    val landlord_phone: String?,
+)
+
+data class IdImageDto(val content_type: String, val data_base64: String)
+data class ReviewPropertyRequest(val action: String, val note: String? = null)
+data class ForceBookedRequest(val booked: Boolean)
+data class VerifyHostRequest(val approve: Boolean, val note: String? = null)
+data class RejectPaymentRequest(val reason: String? = null)

@@ -3,6 +3,7 @@ package com.keja.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -101,6 +102,9 @@ fun KejaTopBar(
     title: String = "keja",
     avatarInitials: String,
     onAvatarClick: () -> Unit,
+    showBell: Boolean = false,
+    unreadCount: Int = 0,
+    onBellClick: () -> Unit = {},
 ) {
     val palette = LocalKejaPalette.current
     Row(
@@ -118,15 +122,41 @@ fun KejaTopBar(
             contentDescription = "Keja",
             modifier = Modifier.height(32.dp),
         )
-        Box(
-            Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(palette.primary)
-                .clickable(onClick = onAvatarClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(avatarInitials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (showBell) {
+                Box(
+                    Modifier
+                        .padding(end = 10.dp)
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(palette.card)
+                        .clickable(onClick = onBellClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Notifications, contentDescription = "Alerts", tint = palette.text, modifier = Modifier.size(20.dp))
+                    if (unreadCount > 0) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFF4D4F))
+                                .padding(horizontal = 5.dp, vertical = 1.dp),
+                        ) {
+                            Text(if (unreadCount > 9) "9+" else "$unreadCount", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(palette.primary)
+                    .clickable(onClick = onAvatarClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(avatarInitials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
         }
     }
 }
@@ -135,42 +165,114 @@ sealed class NavDestination(val route: String, val label: String) {
     object Home : NavDestination("home", "Home")
     object Discover : NavDestination("discover", "Discover")
     object Interested : NavDestination("interested", "Interested")
+    object MyListings : NavDestination("my-listings", "My listings")
     object Profile : NavDestination("profile", "Profile")
+    object AdminHome : NavDestination("admin-home", "Overview")
+    object AdminNew : NavDestination("admin-new", "New")
+    object AdminLandlords : NavDestination("admin-landlords", "Landlords")
+    object AdminPayments : NavDestination("admin-payments", "Payments")
+    object AdminListings : NavDestination("admin-listings", "Listings")
 }
 
-val bottomNavItems = listOf(NavDestination.Home, NavDestination.Discover, NavDestination.Interested, NavDestination.Profile)
+val renterNavItems = listOf(NavDestination.Home, NavDestination.Discover, NavDestination.Interested, NavDestination.Profile)
+val landlordNavItems = listOf(NavDestination.Home, NavDestination.Discover, NavDestination.MyListings, NavDestination.Profile)
+val adminNavItems = listOf(NavDestination.AdminHome, NavDestination.AdminNew, NavDestination.AdminLandlords, NavDestination.AdminPayments, NavDestination.AdminListings, NavDestination.Profile)
+
+private fun iconFor(dest: NavDestination, active: Boolean) = when (dest) {
+    NavDestination.Home -> if (active) Icons.Filled.Home else Icons.Outlined.Home
+    NavDestination.Discover -> if (active) Icons.Filled.Search else Icons.Outlined.Search
+    NavDestination.Interested -> if (active) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+    NavDestination.MyListings -> if (active) Icons.Filled.List else Icons.Outlined.List
+    NavDestination.Profile -> if (active) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle
+    NavDestination.AdminHome -> if (active) Icons.Filled.Home else Icons.Outlined.Home
+    NavDestination.AdminNew -> if (active) Icons.Filled.Star else Icons.Outlined.Star
+    NavDestination.AdminLandlords -> if (active) Icons.Filled.Person else Icons.Outlined.Person
+    NavDestination.AdminPayments -> if (active) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
+    NavDestination.AdminListings -> if (active) Icons.Filled.List else Icons.Outlined.List
+}
 
 @Composable
-fun KejaBottomNav(currentRoute: String?, onNavigate: (String) -> Unit) {
+fun KejaBottomNav(currentRoute: String?, items: List<NavDestination>, badges: Map<String, Int> = emptyMap(), onNavigate: (String) -> Unit) {
     val palette = LocalKejaPalette.current
     Row(
         Modifier
             .fillMaxWidth()
             .background(palette.navBg)
             .border(width = if (palette.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI) 0.dp else 1.dp, color = palette.border)
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(vertical = 8.dp)
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+        horizontalArrangement = if (items.size > 5) Arrangement.spacedBy(4.dp) else Arrangement.SpaceEvenly,
     ) {
-        bottomNavItems.forEach { dest ->
+        items.forEach { dest ->
             val active = currentRoute == dest.route
-            val icon = when (dest) {
-                NavDestination.Home -> if (active) Icons.Filled.Home else Icons.Outlined.Home
-                NavDestination.Discover -> if (active) Icons.Filled.Search else Icons.Outlined.Search
-                NavDestination.Interested -> if (active) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
-                NavDestination.Profile -> if (active) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle
-            }
             val fg = if (active) palette.navActiveFg else palette.navInactive
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+            val count = badges[dest.route] ?: 0
+            Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (active) palette.navActiveBg else Color.Transparent)
                     .clickable { onNavigate(dest.route) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .widthIn(min = if (items.size > 5) 64.dp else 0.dp),
             ) {
-                Icon(icon, contentDescription = dest.label, tint = fg, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.height(2.dp))
-                Text(dest.label, fontSize = 9.sp, color = fg)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(iconFor(dest, active), contentDescription = dest.label, tint = fg, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text(dest.label, fontSize = 9.sp, color = fg, maxLines = 1)
+                }
+                if (count > 0) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF4D4F))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                    ) {
+                        Text(if (count > 9) "9+" else "$count", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The bell on Home: shows the count of unread Alerts (renters/landlords only —
+ * hidden for admins, who have their own overview badges). */
+@Composable
+fun AlertBell(onClick: () -> Unit) {
+    val palette = LocalKejaPalette.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo = remember { com.keja.app.data.AppContainer.repository(context) }
+    val user by repo.currentUser.collectAsState()
+    var unread by remember { mutableStateOf(0) }
+
+    LaunchedEffect(user?.id) {
+        if (user == null || user?.is_admin == true) { unread = 0; return@LaunchedEffect }
+        while (true) {
+            unread = runCatching { repo.notifications() }.getOrNull()?.count { !it.read } ?: 0
+            kotlinx.coroutines.delay(60000)
+        }
+    }
+    if (user == null || user?.is_admin == true) return
+
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(palette.card)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Notifications, contentDescription = "Alerts", tint = palette.text, modifier = Modifier.size(20.dp))
+        if (unread > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF4D4F))
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
+            ) {
+                Text(if (unread > 9) "9+" else "$unread", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

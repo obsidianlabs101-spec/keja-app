@@ -75,6 +75,7 @@ fun PropertyDetailScreen(
     var loading by remember { mutableStateOf(true) }
     var contactStatus by remember { mutableStateOf<ContactUnlockStatus?>(null) }
     var contactStep by remember { mutableStateOf(0) } // 0=not shown yet, 1=choice, 2=pay form
+    var showReferralInfo by remember { mutableStateOf(false) }
     var claimText by remember { mutableStateOf("") }
     var claimError by remember { mutableStateOf<String?>(null) }
     var claiming by remember { mutableStateOf(false) }
@@ -242,20 +243,7 @@ fun PropertyDetailScreen(
                                 val canEarnFree = currentUser?.referral_bonus_granted == false
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     if (canEarnFree) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                val code = currentUser?.referral_code
-                                                if (code != null) {
-                                                    val link = "https://keja-frontend.onrender.com/index.html?ref=$code"
-                                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                                        type = "text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT, "Check out Keja — find your next home in Kenya! $link")
-                                                    }
-                                                    context.startActivity(Intent.createChooser(sendIntent, null))
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                        ) { Text("Share & unlock free", fontSize = 12.sp) }
+                                        OutlinedButton(onClick = { showReferralInfo = true }, modifier = Modifier.weight(1f)) { Text("Share & unlock free", fontSize = 12.sp) }
                                     }
                                     KejaPrimaryButton(text = "Pay KES $MPESA_AMOUNT", modifier = Modifier.weight(1f), onClick = { contactStep = 2 })
                                 }
@@ -285,6 +273,27 @@ fun PropertyDetailScreen(
                     )
                 }
             }
+        }
+
+        if (showReferralInfo) {
+            ReferralInstructionsDialog(
+                amount = MPESA_AMOUNT,
+                onDismiss = { showReferralInfo = false },
+                onPayInstead = { showReferralInfo = false; contactStep = 2 },
+                onStart = {
+                    showReferralInfo = false
+                    scope.launch { runCatching { repo.requestReferral(propertyId) } }
+                    val code = currentUser?.referral_code
+                    if (code != null) {
+                        val link = "https://keja-frontend.onrender.com/index.html?ref=$code"
+                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Check out Keja — find your next home in Kenya! $link")
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, null))
+                    }
+                },
+            )
         }
 
         if (showViewer) {
@@ -459,4 +468,25 @@ private fun UnlockedContactCard(status: ContactUnlockStatus) {
             context.startActivity(intent)
         }
     }
+}
+
+@Composable
+private fun ReferralInstructionsDialog(amount: Int, onDismiss: () -> Unit, onPayInstead: () -> Unit, onStart: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Get this number free") },
+        text = {
+            Column {
+                Text("1. Share your link — send it to a friend who doesn't have a Keja account yet.", fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Text("2. Your friend signs up — they must create a new account through your link.", fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Text("3. The number arrives automatically — sent to your Alerts the moment they sign up.", fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Text("4. This works once. You can pay KES $amount instead if you don't want to wait.", fontSize = 13.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onStart) { Text("Start & share my link") } },
+        dismissButton = { TextButton(onClick = onPayInstead) { Text("Pay instead") } },
+    )
 }

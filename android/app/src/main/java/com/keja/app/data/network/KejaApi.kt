@@ -100,4 +100,53 @@ interface KejaApi {
 
     @PATCH("admin/ads/{id}")
     suspend fun adminUpdateAd(@Path("id") id: String, @Body body: AdUpdateRequest): Response<AdSlotDto>
+
+    // ---- Alerts ----
+    @GET("users/notifications")
+    suspend fun notifications(@Query("context") context: String = "user"): Response<List<NotificationDto>>
+
+    @POST("users/notifications/read-all")
+    suspend fun readAllNotifications(): Response<ResponseBody>
+
+    // ---- Landlord ID photo + deleting a listing ----
+    @Multipart
+    @POST("users/me/id-image")
+    suspend fun uploadIdImage(@Part file: MultipartBody.Part): Response<ResponseBody>
+
+    @DELETE("properties/{id}")
+    suspend fun deleteProperty(@Path("id") id: String): Response<ResponseBody>
+
+    @POST("contact-unlock/{id}/request-referral")
+    suspend fun requestReferral(@Path("id") id: String): Response<ContactUnlockStatus>
+
+    // ---- Admin ----
+    @GET("admin/keja/overview")
+    suspend fun adminOverview(): Response<AdminOverview>
+
+    @GET("admin/keja/properties")
+    suspend fun adminProperties(@Query("review") review: String = "all"): Response<List<AdminPropertyDto>>
+
+    @POST("admin/keja/properties/{id}/review")
+    suspend fun adminReviewProperty(@Path("id") id: String, @Body body: ReviewPropertyRequest): Response<ResponseBody>
+
+    @POST("admin/keja/properties/{id}/force-booked")
+    suspend fun adminForceBooked(@Path("id") id: String, @Body body: ForceBookedRequest): Response<ResponseBody>
+
+    @GET("admin/keja/landlords/{id}/id-image")
+    suspend fun adminLandlordIdImage(@Path("id") id: String): Response<IdImageDto>
+
+    @GET("admin/hosts/pending")
+    suspend fun adminPendingLandlords(): Response<List<PendingLandlordDto>>
+
+    @POST("admin/hosts/{id}/verify")
+    suspend fun adminVerifyLandlord(@Path("id") id: String, @Body body: VerifyHostRequest): Response<ResponseBody>
+
+    @GET("contact-unlock/admin/pending")
+    suspend fun adminPendingPayments(): Response<List<PendingPaymentDto>>
+
+    @POST("contact-unlock/admin/{id}/show")
+    suspend fun adminShowContact(@Path("id") id: String): Response<ResponseBody>
+
+    @POST("contact-unlock/admin/{id}/reject")
+    suspend fun adminRejectPayment(@Path("id") id: String, @Body body: RejectPaymentRequest): Response<ResponseBody>
 }
