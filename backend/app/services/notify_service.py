@@ -25,3 +25,21 @@ def notify_contact_ready(db, unlock, prop=None, commit: bool = True):
         {"property_id": str(unlock.property_id), "phone": phone, "landlord_name": name},
         commit=commit,
     )
+
+
+def notify_property_booked(db, prop, commit: bool = True):
+    """Tells everyone who has this property in their Interested list that
+    it's been booked (either by the landlord or an admin), so they don't
+    waste a trip or a payment on it."""
+    from app.models.interested_property import InterestedProperty
+    rows = db.query(InterestedProperty).filter(InterestedProperty.property_id == prop.id).all()
+    for row in rows:
+        notify(
+            db, row.user_id, "property_booked",
+            f"No longer available: {prop.title}",
+            "This property has just been booked by someone else. We'll keep finding you others like it.",
+            {"property_id": str(prop.id)},
+            commit=False,
+        )
+    if commit and rows:
+        db.commit()

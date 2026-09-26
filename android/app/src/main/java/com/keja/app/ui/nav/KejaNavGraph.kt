@@ -44,16 +44,15 @@ fun KejaNavGraph() {
     val currentRoute = backStackEntry?.destination?.route
 
     val bottomRoutes = listOf(
-        ROUTE_HOME, ROUTE_DISCOVER, ROUTE_INTERESTED, ROUTE_MY_LISTINGS, ROUTE_PROFILE,
+        ROUTE_HOME, ROUTE_DISCOVER, ROUTE_INTERESTED, ROUTE_PROFILE,
         ROUTE_ADMIN_HOME, ROUTE_ADMIN_NEW, ROUTE_ADMIN_LANDLORDS, ROUTE_ADMIN_PAYMENTS, ROUTE_ADMIN_LISTINGS,
     )
     val showBottomBar = currentRoute in bottomRoutes
 
-    val navItems = when {
-        user?.is_admin == true -> adminNavItems
-        user?.is_host == true -> landlordNavItems
-        else -> renterNavItems
-    }
+    // A landlord is a normal user with an extra "Open landlord dashboard"
+    // entry point on their Profile page — not a different bottom nav. Only
+    // admins get a role-specific nav, since their account has no renter use.
+    val navItems = if (user?.is_admin == true) adminNavItems else renterNavItems
     var badges by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     LaunchedEffect(user?.id, user?.is_admin) {
         if (user?.is_admin == true) {
@@ -76,7 +75,7 @@ fun KejaNavGraph() {
     // An admin account has no need for the renter/landlord pages — redirect
     // straight to the admin overview if one of those routes is somehow hit.
     LaunchedEffect(currentRoute, user?.is_admin) {
-        if (user?.is_admin == true && currentRoute in listOf(ROUTE_HOME, ROUTE_DISCOVER, ROUTE_INTERESTED, ROUTE_MY_LISTINGS)) {
+        if (user?.is_admin == true && currentRoute in listOf(ROUTE_HOME, ROUTE_DISCOVER, ROUTE_INTERESTED)) {
             navController.navigate(ROUTE_ADMIN_HOME) { popUpTo(0) }
         }
     }
@@ -121,12 +120,6 @@ fun KejaNavGraph() {
                     isLoggedIn = user != null,
                     onRequireLogin = { navController.navigate(ROUTE_AUTH) },
                     onOpenProperty = { id -> navController.navigate("property/$id") },
-                )
-            }
-            composable(ROUTE_MY_LISTINGS) {
-                MyListingsScreen(
-                    onOpenProperty = { id -> navController.navigate("property/$id") },
-                    onAddProperty = { navController.navigate(ROUTE_LANDLORD_DASHBOARD) },
                 )
             }
             composable(ROUTE_ALERTS) {

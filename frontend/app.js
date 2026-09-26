@@ -86,8 +86,7 @@ async function refreshCurrentUser() {
 
 function navItemsFor(u) {
   if (u && u.is_admin) return [["admin", "⌂", "Overview"], ["adminNew", "✦", "New"], ["adminLandlords", "☺", "Landlords"], ["adminPayments", "✓", "Payments"], ["adminListings", "▤", "Listings"], ["adminAds", "◎", "Ads"], ["profile", "◉", "Profile"]];
-  if (u && u.is_host) return [["home", "⌂", "Home"], ["discover", "⌕", "Discover"], ["myListings", "▤", "My listings"], ["profile", "◉", "Profile"]];
-  return [["home", "⌂", "Home"], ["discover", "⌕", "Discover"], ["interested", "♡", "Interested"], ["profile", "◉", "Profile"]];
+    return [["home", "⌂", "Home"], ["discover", "⌕", "Discover"], ["interested", "♡", "Interested"], ["profile", "◉", "Profile"]];
 }
 function buildNav() {
   const nav = document.querySelector(".bottom-nav"); if (!nav) return;
@@ -138,7 +137,6 @@ function render() {
   // Role-based pages: admins only see admin pages; landlords get "My listings" instead of Interested.
   if (isLoggedIn() && currentUser) {
     if (currentUser.is_admin && !ADMIN_VIEWS.includes(currentView)) currentView = "admin";
-    else if (currentUser.is_host && !currentUser.is_admin && currentView === "interested") currentView = "myListings";
   }
   document.querySelectorAll(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.view === currentView));
   if (currentView === "home") home();
@@ -152,7 +150,6 @@ function render() {
   if (currentView === "adminPayments") adminPayments();
   if (currentView === "adminListings") adminListings();
   if (currentView === "adminAds") adminAds();
-  if (currentView === "myListings") myListings();
   if (currentView === "alerts") alertsPage();
   if (currentView === "landlordProfile") landlordProfile();
   localStorage.setItem("kejaView", currentView);
@@ -490,7 +487,7 @@ function loadLandlordListings() {
     const count = document.getElementById("listingCount");
     if (!body) return;
     if (count) count.textContent = list.length + " active";
-    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}<br><span class="muted">${p.area || p.county}${p.proximity_note ? " · " + escHtml(p.proximity_note) : ""}</span></td><td>${money(p.price)}</td><td>👁 ${p.view_count}<br><span class="muted">✦ ${(p.amenities || []).length} amenities</span></td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button> <button class="chip amenBtn">Amenities</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
+    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}<br><span class="muted">${p.area || p.county}${p.proximity_note ? " · " + escHtml(p.proximity_note) : ""}</span>${p.review_status === "rejected" ? `<br><span class="muted" style="color:#ef4444">Rejected${p.review_note ? ": " + escHtml(p.review_note) : ""}</span>` : ""}</td><td>${money(p.price)}</td><td>👁 ${p.view_count}<br><span class="muted">✦ ${(p.amenities || []).length} amenities</span></td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button> <button class="chip amenBtn">Amenities</button> <button class="chip danger delBtn">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
     body.querySelectorAll("tr[data-id]").forEach(row => {
       const id = row.dataset.id;
       const amenBtn = row.querySelector(".amenBtn");
@@ -501,6 +498,9 @@ function loadLandlordListings() {
         try { await api(`/properties/${id}`, { method: "PATCH", body: JSON.stringify({ is_booked: wantBooked }) }); loadLandlordListings(); }
         catch (e) { toast(e.message || "Couldn't update"); }
       };
+      const delBtn = row.querySelector(".delBtn");
+      if (delBtn) delBtn.onclick = () => confirmBox("Delete this listing?", "It will be removed from Keja and renters won't see it any more.", "Delete", () =>
+        api(`/properties/${id}`, { method: "DELETE" }).then(() => { toast("Listing deleted"); loadLandlordListings(); }).catch(e => toast(e.message || "Couldn't delete")));
     });
   }).catch(() => {
     const body = document.getElementById("listingsBody");
@@ -686,28 +686,6 @@ function adminAds() {
       el.textContent = live ? "Live" : "No ad"; el.className = "status " + (live ? "available" : "");
     });
   }).catch(() => {});
-}
-
-/* ---------------- Landlord: My listings (replaces Interested) ---------------- */
-function myListings() {
-  if (!isLoggedIn() || !currentUser || !currentUser.is_host) { requireCapability(false, "Landlord", "landlord"); return; }
-  app.innerHTML = `<section class="hero"><div class="eyebrow">YOUR PROPERTIES</div><h1>My listings</h1><p>Everything you've posted. Delete anything you no longer want listed.</p></section><div id="myListBody">${loaderHtml()}</div>`;
-  const load = () => api("/properties/mine").then(list => {
-    const body = document.getElementById("myListBody"); if (!body) return;
-    body.innerHTML = list.length ? list.map(p => `<div class="acard" data-id="${p.id}"><img class="acard-img" src="${mediaUrl(p.main_image_url)}" alt="">
- <div class="acard-body"><div class="acard-top"><strong>${escHtml(p.property_type)} · ${money(p.price)}</strong>${p.review_status === "rejected" ? `<span class="pill red">Rejected</span>` : p.is_booked ? `<span class="pill amber">Booked</span>` : `<span class="pill green">Live</span>`}</div>
- <div class="muted" style="font-size:12px">${escHtml(p.area || p.county || "")} · 👁 ${p.view_count} · ${(p.images || []).length} photos</div>
- ${p.review_status === "rejected" && p.review_note ? `<div class="muted" style="font-size:12px;color:#ef4444">Rejected: ${escHtml(p.review_note)}</div>` : ""}
- <div class="acard-actions"><button class="chip" data-act="amen">Edit features</button><button class="chip danger" data-act="del">Delete</button></div></div></div>`).join("") : `<div class="empty">You haven't listed anything yet.<br><button class="primary" id="mlAdd" style="margin-top:12px">＋ Add property</button></div>`;
-    const add = document.getElementById("mlAdd"); if (add) add.onclick = openAdd;
-    body.querySelectorAll(".acard").forEach(card => {
-      const id = card.dataset.id, p = list.find(x => x.id === id);
-      card.querySelector('[data-act="amen"]').onclick = () => openAmenitiesEditor(p);
-      card.querySelector('[data-act="del"]').onclick = () => confirmBox("Delete this listing?", "It will be removed from Keja and renters won't see it any more.", "Delete", () =>
-        api(`/properties/${id}`, { method: "DELETE" }).then(() => { toast("Listing deleted"); load(); }).catch(e => toast(e.message || "Couldn't delete")));
-    });
-  }).catch(e => { const b = document.getElementById("myListBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load your listings")}</div>`; });
-  load();
 }
 
 /* ---------------- Alerts (the bell) ---------------- */
@@ -1156,9 +1134,10 @@ async function openAdPlacement() {
       const cur = ads.find(a => a.placement === key && a.is_active);
       return `<div class="ad-editor" data-p="${key}"><strong>${label}</strong><small class="muted" style="display:block;margin:2px 0 8px">${hint}</small>
  ${cur ? `<img class="ad-preview" src="${escHtml(safeHttpUrl(cur.image_url))}" alt="Current ${label} ad"><div class="muted" style="font-size:12px;margin:6px 0">Live now${cur.link_url ? " · links to " + escHtml(cur.link_url) : " · no link"}</div>` : `<div class="muted" style="font-size:12px;margin-bottom:6px">No live ad — the placeholder is shown.</div>`}
- <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file"><div class="ad-note muted" style="font-size:12px;margin-top:4px"></div>
- <input type="text" inputmode="url" autocapitalize="none" class="ad-link" placeholder="Website (optional, e.g. bash.co.ke)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
- <div style="display:flex;gap:8px;margin-top:8px"><button class="primary ad-upload" style="flex:1">${cur ? "Replace ad" : "Upload ad"}</button>${cur ? `<button class="chip ad-save-link">Save link</button><button class="chip ad-off">Turn off</button>` : ""}</div></div>`;
+ <input type="file" accept="image/png,image/jpeg,image/webp" class="ad-file" autocomplete="off"><div class="ad-note muted" style="font-size:12px;margin-top:4px"></div>
+ <input type="text" inputmode="url" autocapitalize="none" autocomplete="off" data-lpignore="true" data-form-type="other" name="ad-link-${key}" class="ad-link" placeholder="Website (optional, e.g. bash.co.ke)" value="${cur && cur.link_url ? escHtml(cur.link_url) : ""}" style="width:100%;margin-top:8px">
+ <div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="primary ad-upload" style="flex:1">${cur ? "Replace ad" : "Upload ad"}</button>${cur ? `<button type="button" class="chip ad-save-link">Save link</button><button type="button" class="chip ad-off">Turn off</button>` : ""}</div>
+ <p class="ad-error" style="font-size:12px;color:#ef4444;margin-top:6px;min-height:14px"></p></div>`;
     }).join("");
 
     document.querySelectorAll(".ad-editor").forEach(box => {
@@ -1178,11 +1157,21 @@ async function openAdPlacement() {
         im.src = url;
       };
       box.querySelector(".ad-upload").onclick = async (ev) => {
+        const errEl = box.querySelector(".ad-error");
+        errEl.textContent = "";
         const f = box.querySelector(".ad-file").files[0];
-        if (!f) { toast("Choose an image first"); return; }
+        if (!f) { errEl.textContent = "Choose an image first — tap \"Choose file\" above, then Upload ad."; return; }
         const fd = new FormData(); fd.append("placement", key); fd.append("file", f); if (linkVal()) fd.append("link_url", linkVal());
+        const label = ev.target.textContent;
         ev.target.disabled = true; ev.target.textContent = "Uploading…";
-        try { await api("/admin/ads", { method: "POST", body: fd }); toast("Ad is live"); } catch (e) { toast(e.message); }
+        try {
+          await api("/admin/ads", { method: "POST", body: fd });
+          toast(`${label === "Replace ad" ? "Replaced" : "Uploaded"} — ${key === "home" ? "Home" : "Interested"} ad is live`);
+        } catch (e) {
+          errEl.textContent = e.message || "Upload failed — please try again.";
+        } finally {
+          ev.target.disabled = false; ev.target.textContent = label;
+        }
         draw();
       };
       const off = box.querySelector(".ad-off");

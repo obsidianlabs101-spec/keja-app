@@ -28,6 +28,7 @@ def create_property(db: Session, landlord_id: UUID, data: PropertyCreate) -> Pro
 
 
 def update_property(db: Session, prop: Property, data: PropertyUpdate) -> Property:
+    was_booked = prop.is_booked
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(prop, field, value)
     if prop.review_status == "rejected":
@@ -35,6 +36,9 @@ def update_property(db: Session, prop: Property, data: PropertyUpdate) -> Proper
     db.add(prop)
     db.commit()
     db.refresh(prop)
+    if prop.is_booked and not was_booked:
+        from app.services.notify_service import notify_property_booked
+        notify_property_booked(db, prop)
     return prop
 
 

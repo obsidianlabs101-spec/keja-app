@@ -55,6 +55,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
     var showAddForm by remember { mutableStateOf(false) }
     var showBecomeForm by remember { mutableStateOf(false) }
     var editingAmenities by remember { mutableStateOf<Property?>(null) }
+    var deleting by remember { mutableStateOf<Property?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
     var avatarMsg by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(user?.profile_pic_url) { if (avatarUrl == null) avatarUrl = user?.profile_pic_url }
@@ -200,9 +201,29 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
                         }
                     },
                     onEditAmenities = { editingAmenities = p },
+                    onDelete = { deleting = p },
                 )
             }
         }
+    }
+
+    deleting?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete this listing?") },
+            text = { Text("It will be removed from Keja and renters won't see it any more.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleting = null
+                    scope.launch {
+                        runCatching { repo.deleteProperty(target.id) }
+                            .onSuccess { android.widget.Toast.makeText(context, "Listing deleted", android.widget.Toast.LENGTH_SHORT).show(); refresh() }
+                            .onFailure { android.widget.Toast.makeText(context, it.message ?: "Couldn't delete", android.widget.Toast.LENGTH_SHORT).show() }
+                    }
+                }) { Text("Delete", color = Color(0xFFEF4444)) }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+        )
     }
 
     editingAmenities?.let { target ->
@@ -244,7 +265,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAmenities: () -> Unit) {
+private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAmenities: () -> Unit, onDelete: () -> Unit) {
     val palette = LocalKejaPalette.current
     Column(
         Modifier
@@ -275,10 +296,25 @@ private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAm
             }
         }
         Spacer(Modifier.height(10.dp))
+        if (p.review_status == "rejected") {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Rejected" + (p.review_note?.let { ": $it" } ?: ""),
+                color = Color(0xFFEF4444),
+                fontSize = 12.sp,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KejaSecondaryButton(text = if (p.is_booked) "Mark available" else "Mark booked", onClick = onToggleBooked, modifier = Modifier.weight(1f))
             KejaSecondaryButton(text = "Amenities", onClick = onEditAmenities, modifier = Modifier.weight(1f))
         }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onDelete,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+        ) { Text("Delete", fontSize = 13.sp) }
     }
 }
 

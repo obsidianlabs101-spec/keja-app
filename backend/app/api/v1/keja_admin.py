@@ -110,6 +110,7 @@ def force_booked(property_id: UUID, body: ForceBookedRequest, db: Session = Depe
     p = db.query(Property).filter(Property.id == property_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Property not found")
+    was_booked = p.is_booked
     p.is_booked = body.booked
     p.is_available = (not body.booked) and p.review_status != "rejected"
     db.add(p)
@@ -117,6 +118,9 @@ def force_booked(property_id: UUID, body: ForceBookedRequest, db: Session = Depe
     db.refresh(p)
     if body.booked:
         notify(db, p.landlord_id, "listing_booked", f"Marked as booked: {p.title}", "An admin marked this listing as booked, so it no longer shows to renters.", {"property_id": str(p.id)})
+        if not was_booked:
+            from app.services.notify_service import notify_property_booked
+            notify_property_booked(db, p)
     return _prop_row(p)
 
 
