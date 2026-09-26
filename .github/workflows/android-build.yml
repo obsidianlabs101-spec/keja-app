@@ -38,9 +38,40 @@ jobs:
         run: echo "::add-matcher::.github/kotlinc-matcher.json"
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        id: build
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+        continue-on-error: true
+
+      # The annotations above depend on matching the compiler's exact output
+      # format, which varies by Kotlin version and can silently match
+      # nothing. This is a format-independent fallback: push the real log to
+      # a small orphan branch (not main, so it can't trigger this workflow
+      # again) so it can be read straight from raw.githubusercontent.com —
+      # no GitHub-authenticated log download needed.
+      - name: Publish build log for debugging (on failure)
+        if: steps.build.outcome == 'failure'
+        working-directory: /tmp
+        run: |
+          set -e
+          tail -n 500 "$GITHUB_WORKSPACE/android/build.log" > last-build.log
+          rm -rf logrepo
+          git init -q logrepo
+          cd logrepo
+          git checkout -q -b ci-logs
+          cp ../last-build.log .
+          git config user.email "ci@keja.local"
+          git config user.name "Keja CI"
+          git add last-build.log
+          git commit -q -m "Build log for ${{ github.sha }}"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push -q origin ci-logs --force
+
+      - name: Fail job if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: keja-debug-apk
@@ -53,6 +84,7 @@ jobs:
       # re-publishes to the SAME tag every build so the website's link
       # never has to change.
       - name: Publish APK as a public release asset
+        if: steps.build.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
