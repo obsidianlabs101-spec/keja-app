@@ -39,7 +39,9 @@ jobs:
 
       - name: Build debug APK
         id: build
-        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
         continue-on-error: true
 
       # The annotations above depend on matching the compiler's exact output
