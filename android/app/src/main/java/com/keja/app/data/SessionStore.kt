@@ -2,6 +2,7 @@ package com.keja.app.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -19,6 +20,10 @@ class SessionStore(private val context: Context) {
     private val userJsonKey = stringPreferencesKey("user_json")
     private val themeStyleKey = stringPreferencesKey("theme_style") // "pro" | "rangi"
     private val darkOverrideKey = booleanPreferencesKey("dark_override") // absent = follow system
+    // The most recent alert ids already shown as a system notification, so
+    // AlertsSyncWorker never posts the same alert twice. Capped at 60 (see
+    // markAlertsNotified) since we only need enough history to de-dupe.
+    private val notifiedAlertIdsKey = stringSetPreferencesKey("notified_alert_ids")
     private val gson = Gson()
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[tokenKey] }
@@ -30,6 +35,16 @@ class SessionStore(private val context: Context) {
     val darkOverrideFlow: Flow<Boolean?> = context.dataStore.data.map { it[darkOverrideKey] }
     val themeStyleFlow: Flow<KejaThemeStyle> = context.dataStore.data.map { prefs ->
         if (prefs[themeStyleKey] == "rangi") KejaThemeStyle.RANGI else KejaThemeStyle.PROFESSIONAL
+    }
+
+    suspend fun notifiedAlertIds(): Set<String> = context.dataStore.data.map { it[notifiedAlertIdsKey] ?: emptySet() }.first()
+
+    suspend fun markAlertsNotified(ids: Set<String>) {
+        if (ids.isEmpty()) return
+        context.dataStore.edit { prefs ->
+            val merged = (prefs[notifiedAlertIdsKey] ?: emptySet()) + ids
+            prefs[notifiedAlertIdsKey] = if (merged.size > 60) merged.toList().takeLast(60).toSet() else merged
+        }
     }
 
     suspend fun setDarkOverride(value: Boolean?) {

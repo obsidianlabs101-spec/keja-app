@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 
 @Composable
-fun AlertsScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProperty: (String) -> Unit) {
+fun AlertsScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProperty: (String) -> Unit, onRequestNotificationPermission: () -> Unit = {}) {
     val palette = LocalKejaPalette.current
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
@@ -35,6 +35,7 @@ fun AlertsScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProperty
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) return@LaunchedEffect
+        onRequestNotificationPermission()
         items = runCatching { repo.notifications() }.getOrDefault(emptyList())
         if (items?.any { !it.read } == true) runCatching { repo.readAllNotifications() }
     }

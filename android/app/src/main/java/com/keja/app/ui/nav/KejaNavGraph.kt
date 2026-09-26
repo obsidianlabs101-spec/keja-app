@@ -35,7 +35,11 @@ private const val ROUTE_ADMIN_LISTINGS = "admin-listings"
 private const val ROUTE_ADMIN_ADS = "admin-ads"
 
 @Composable
-fun KejaNavGraph() {
+fun KejaNavGraph(
+    pendingRoute: String? = null,
+    onPendingRouteConsumed: () -> Unit = {},
+    onRequestNotificationPermission: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
@@ -77,6 +81,16 @@ fun KejaNavGraph() {
     LaunchedEffect(currentRoute, user?.is_admin) {
         if (user?.is_admin == true && currentRoute in listOf(ROUTE_HOME, ROUTE_DISCOVER, ROUTE_INTERESTED)) {
             navController.navigate(ROUTE_ADMIN_HOME) { popUpTo(0) }
+        }
+    }
+
+    // A notification tap (see AlertNotifier) sets this in MainActivity —
+    // jump straight to Alerts once the graph exists, whether the app was
+    // cold-started or already running.
+    LaunchedEffect(pendingRoute) {
+        if (pendingRoute == com.keja.app.MainActivity.ROUTE_ALERTS) {
+            navController.navigate(ROUTE_ALERTS) { launchSingleTop = true }
+            onPendingRouteConsumed()
         }
     }
 
@@ -127,6 +141,7 @@ fun KejaNavGraph() {
                     isLoggedIn = user != null,
                     onRequireLogin = { navController.navigate(ROUTE_AUTH) },
                     onOpenProperty = { id -> navController.navigate("property/$id") },
+                    onRequestNotificationPermission = onRequestNotificationPermission,
                 )
             }
             composable(ROUTE_PROFILE) {

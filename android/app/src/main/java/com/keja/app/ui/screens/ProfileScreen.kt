@@ -101,7 +101,7 @@ fun ProfileScreen(
                 title = "Account",
                 subtitle = "Signed in as ${u.email ?: u.username}",
                 actionLabel = "Log out",
-                onClick = { scope.launch { repo.logout(); onLoggedOut() } },
+                onClick = { com.keja.app.data.notify.AlertsSync.cancel(context); scope.launch { repo.logout(); onLoggedOut() } },
             )
             Spacer(Modifier.height(10.dp))
             SettingRow(
