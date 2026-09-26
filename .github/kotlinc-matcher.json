@@ -1,0 +1,17 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "kotlinc",
+      "pattern": [
+        {
+          "regexp": "^(e|w): (.*\\.kt): \\((\\d+), (\\d+)\\): (.*)$",
+          "severity": 1,
+          "file": 2,
+          "line": 3,
+          "column": 4,
+          "message": 5
+        }
+      ]
+    }
+  ]
+}
