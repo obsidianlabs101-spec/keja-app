@@ -50,33 +50,36 @@ fun AdminOverviewScreen(onOpen: (String) -> Unit) {
 
     AdminPage("KEJA ADMIN", "Overview", "What needs your attention right now.") {
         val o = overview
-        if (o == null) { KejaLoader(size = 48.dp); return@AdminPage }
-        val tiles = listOf(
-            Triple("New listings", o.unreviewed_properties, AdminRoutes.NEW),
-            Triple("Landlord applications", o.pending_landlords, AdminRoutes.LANDLORDS),
-            Triple("Payment messages", o.pending_payments, AdminRoutes.PAYMENTS),
-            Triple("All listings", o.total_properties, AdminRoutes.LISTINGS),
-        )
-        tiles.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { (label, count, route) ->
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(palette.card)
-                            .clickable { onOpen(route) }
-                            .padding(16.dp),
-                    ) {
-                        Text(label, color = palette.muted, fontSize = 12.sp)
-                        Text("$count", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+        if (o == null) {
+            KejaLoader(size = 48.dp)
+        } else {
+            val tiles = listOf(
+                Triple("New listings", o.unreviewed_properties, AdminRoutes.NEW),
+                Triple("Landlord applications", o.pending_landlords, AdminRoutes.LANDLORDS),
+                Triple("Payment messages", o.pending_payments, AdminRoutes.PAYMENTS),
+                Triple("All listings", o.total_properties, AdminRoutes.LISTINGS),
+            )
+            tiles.chunked(2).forEach { row ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { (label, count, route) ->
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(palette.card)
+                                .clickable { onOpen(route) }
+                                .padding(16.dp),
+                        ) {
+                            Text(label, color = palette.muted, fontSize = 12.sp)
+                            Text("$count", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+                        }
                     }
                 }
             }
+            Text("Total users: ${o.total_users}", color = palette.muted, fontSize = 12.sp)
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = { onOpen(AdminRoutes.ADS) }, modifier = Modifier.fillMaxWidth()) { Text("Manage ads") }
         }
-        Text("Total users: ${o.total_users}", color = palette.muted, fontSize = 12.sp)
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = { onOpen(AdminRoutes.ADS) }, modifier = Modifier.fillMaxWidth()) { Text("Manage ads") }
     }
 }
 
@@ -298,6 +301,7 @@ fun AdminPaymentsScreen() {
 
 // ---------------------------------------------------------------- All listings
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminListingsScreen() {
     val palette = LocalKejaPalette.current
@@ -345,29 +349,32 @@ fun AdminListingsScreen() {
             }
         }
         val list = all
-        if (list == null) { KejaLoader(size = 48.dp); return@AdminPage }
-        val shown = list.filter {
-            when (filter) {
-                "live" -> it.is_available
-                "booked" -> it.is_booked
-                "rejected" -> it.review_status == "rejected"
-                else -> true
+        if (list == null) {
+            KejaLoader(size = 48.dp)
+        } else {
+            val shown = list.filter {
+                when (filter) {
+                    "live" -> it.is_available
+                    "booked" -> it.is_booked
+                    "rejected" -> it.review_status == "rejected"
+                    else -> true
+                }
             }
-        }
-        if (shown.isEmpty()) Text("Nothing here", color = palette.muted)
-        shown.forEach { p ->
-            AdminPropertyCard(p) {
-                OutlinedButton(onClick = { booking = p }) { Text(if (p.is_booked) "Reopen" else "Mark booked", fontSize = 12.sp) }
-                if (p.review_status == "rejected") {
-                    Button(onClick = {
-                        scope.launch {
-                            runCatching { repo.adminReviewProperty(p.id, "approve", null) }
-                                .onSuccess { toast(context, "Approved"); load() }
-                                .onFailure { toast(context, it.message ?: "Couldn't approve") }
-                        }
-                    }) { Text("Approve", fontSize = 12.sp) }
-                } else {
-                    OutlinedButton(onClick = { rejecting = p }) { Text("Reject", fontSize = 12.sp, color = Red) }
+            if (shown.isEmpty()) Text("Nothing here", color = palette.muted)
+            shown.forEach { p ->
+                AdminPropertyCard(p) {
+                    OutlinedButton(onClick = { booking = p }) { Text(if (p.is_booked) "Reopen" else "Mark booked", fontSize = 12.sp) }
+                    if (p.review_status == "rejected") {
+                        Button(onClick = {
+                            scope.launch {
+                                runCatching { repo.adminReviewProperty(p.id, "approve", null) }
+                                    .onSuccess { toast(context, "Approved"); load() }
+                                    .onFailure { toast(context, it.message ?: "Couldn't approve") }
+                            }
+                        }) { Text("Approve", fontSize = 12.sp) }
+                    } else {
+                        OutlinedButton(onClick = { rejecting = p }) { Text("Reject", fontSize = 12.sp, color = Red) }
+                    }
                 }
             }
         }

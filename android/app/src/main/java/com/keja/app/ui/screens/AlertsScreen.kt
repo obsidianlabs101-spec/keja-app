@@ -3,6 +3,7 @@ package com.keja.app.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -100,6 +101,3 @@ fun AlertsScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProperty
         }
     }
 }
-
-private fun Modifier.border(width: androidx.compose.ui.unit.Dp, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape) =
-    this.then(androidx.compose.foundation.border(width, color, shape))
