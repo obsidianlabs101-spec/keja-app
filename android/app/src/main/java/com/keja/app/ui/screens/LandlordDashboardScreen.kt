@@ -116,20 +116,19 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
         if (user?.is_host != true) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (verificationStatus == "pending") {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("⏳", fontSize = 36.sp)
-                        Spacer(Modifier.height(10.dp))
-                        Text("Verification pending", fontWeight = FontWeight.Bold)
-                        Text("We're reviewing your landlord application.", color = palette.muted, fontSize = 13.sp)
-                    }
+                    LandlordStatusCard(
+                        icon = androidx.compose.material.icons.Icons.Outlined.AccessTime,
+                        title = "Verification pending",
+                        subtitle = "We're reviewing your landlord application — this usually doesn't take long.",
+                    )
                 } else if (showBecomeForm) {
                     BecomeLandlordForm(onDone = { showBecomeForm = false; verificationStatus = "pending" })
                 } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("⌂", fontSize = 36.sp)
-                        Spacer(Modifier.height(10.dp))
-                        Text("Become a landlord", fontWeight = FontWeight.Bold)
-                        Text("List your property on Keja.", color = palette.muted, fontSize = 13.sp)
+                    LandlordStatusCard(
+                        icon = androidx.compose.material.icons.Icons.Outlined.Home,
+                        title = "Become a landlord",
+                        subtitle = "List your property on Keja and reach renters across Kenya.",
+                    ) {
                         Spacer(Modifier.height(14.dp))
                         KejaPrimaryButton(text = "Get started", onClick = { showBecomeForm = true })
                     }
@@ -148,7 +147,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(com.keja.app.ui.theme.KejaShapes.card)
                 .background(palette.card)
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -251,16 +250,57 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
 }
 
 @Composable
-private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
+private fun LandlordStatusCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    content: @Composable (ColumnScope.() -> Unit)? = null,
+) {
     val palette = LocalKejaPalette.current
     Column(
-        modifier
-            .clip(RoundedCornerShape(14.dp))
+        Modifier
+            .fillMaxWidth(0.86f)
+            .clip(com.keja.app.ui.theme.KejaShapes.card)
             .background(palette.card)
-            .padding(12.dp),
+            .padding(vertical = 32.dp, horizontal = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Box(
+            Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(palette.primary, palette.coral))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = palette.text)
+        Spacer(Modifier.height(4.dp))
+        Text(subtitle, color = palette.muted, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        content?.invoke(this)
+    }
+}
+
+@Composable
+private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
+    val palette = LocalKejaPalette.current
+    val icon = when (label) {
+        "Listings" -> androidx.compose.material.icons.Icons.Outlined.Home
+        "Views" -> androidx.compose.material.icons.Icons.Outlined.Visibility
+        "Interested" -> androidx.compose.material.icons.Icons.Outlined.FavoriteBorder
+        else -> androidx.compose.material.icons.Icons.Outlined.LockOpen
+    }
+    Column(
+        modifier
+            .clip(com.keja.app.ui.theme.KejaShapes.card)
+            .background(palette.card)
+            .padding(14.dp),
+    ) {
+        Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = palette.primary, modifier = Modifier.size(15.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(value, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
         Text(label, fontSize = 11.sp, color = palette.muted)
-        Text(value, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
     }
 }
 
@@ -270,7 +310,7 @@ private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAm
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(com.keja.app.ui.theme.KejaShapes.card)
             .background(palette.card)
             .padding(12.dp),
     ) {

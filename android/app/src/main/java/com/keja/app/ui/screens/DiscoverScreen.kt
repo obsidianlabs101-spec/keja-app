@@ -2,6 +2,7 @@ package com.keja.app.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -58,26 +59,30 @@ fun DiscoverScreen(
     }
 
     if (!isLoggedIn) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🔍", fontSize = 40.sp)
-                Spacer(Modifier.height(10.dp))
-                Text("Log in to discover places", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onRequireLogin) { Text("Log in") }
-            }
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            DiscoverStateCard(
+                icon = Icons.Filled.Search,
+                title = "Log in to discover places",
+                subtitle = "Swipe through new listings picked for you.",
+                actionLabel = "Log in",
+                onAction = onRequireLogin,
+            )
         }
         return
     }
 
     if (loading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
         return
     }
 
     if (properties.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("You've seen everything for now 🎉", fontWeight = FontWeight.Bold)
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            DiscoverStateCard(
+                icon = Icons.Filled.CheckCircle,
+                title = "You've seen everything for now",
+                subtitle = "Check back soon — new listings are added often.",
+            )
         }
         return
     }
@@ -217,15 +222,55 @@ private fun DiscoverCard(
 
 @Composable
 private fun DiscoverFab(icon: androidx.compose.ui.graphics.vector.ImageVector, active: Boolean = false, onClick: () -> Unit) {
+    val palette = com.keja.app.ui.theme.LocalKejaPalette.current
     Box(
         Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(if (active) Color(0xFF6C4DFF) else Color.Black.copy(alpha = 0.55f))
+            .background(if (active) palette.primary else Color.Black.copy(alpha = 0.55f))
+            .border(1.dp, Color.White.copy(alpha = if (active) 0f else 0.15f), CircleShape)
             .clickableSimple(onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun DiscoverStateCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth(0.82f)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+            .padding(vertical = 32.dp, horizontal = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(56.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Spacer(Modifier.height(4.dp))
+        Text(subtitle, fontSize = 13.sp, color = Color.White.copy(alpha = 0.7f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.height(18.dp))
+            Button(
+                onClick = onAction,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                modifier = Modifier.fillMaxWidth(0.75f),
+            ) { Text(actionLabel, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 
