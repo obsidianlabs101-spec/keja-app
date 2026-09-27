@@ -10,7 +10,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -117,7 +124,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (verificationStatus == "pending") {
                     LandlordStatusCard(
-                        icon = androidx.compose.material.icons.Icons.Outlined.AccessTime,
+                        icon = Icons.Outlined.AccessTime,
                         title = "Verification pending",
                         subtitle = "We're reviewing your landlord application — this usually doesn't take long.",
                     )
@@ -125,7 +132,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
                     BecomeLandlordForm(onDone = { showBecomeForm = false; verificationStatus = "pending" })
                 } else {
                     LandlordStatusCard(
-                        icon = androidx.compose.material.icons.Icons.Outlined.Home,
+                        icon = Icons.Outlined.Home,
                         title = "Become a landlord",
                         subtitle = "List your property on Keja and reach renters across Kenya.",
                     ) {
@@ -266,7 +273,7 @@ private fun LandlordStatusCard(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape)
+            Modifier.size(56.dp).clip(CircleShape)
                 .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(palette.primary, palette.coral))),
             contentAlignment = Alignment.Center,
         ) {
@@ -284,10 +291,10 @@ private fun LandlordStatusCard(
 private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
     val palette = LocalKejaPalette.current
     val icon = when (label) {
-        "Listings" -> androidx.compose.material.icons.Icons.Outlined.Home
-        "Views" -> androidx.compose.material.icons.Icons.Outlined.Visibility
-        "Interested" -> androidx.compose.material.icons.Icons.Outlined.FavoriteBorder
-        else -> androidx.compose.material.icons.Icons.Outlined.LockOpen
+        "Listings" -> Icons.Outlined.Home
+        "Views" -> Icons.Outlined.Visibility
+        "Interested" -> Icons.Outlined.FavoriteBorder
+        else -> Icons.Outlined.LockOpen
     }
     Column(
         modifier
@@ -295,7 +302,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
             .background(palette.card)
             .padding(14.dp),
     ) {
-        Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(30.dp).clip(CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = null, tint = palette.primary, modifier = Modifier.size(15.dp))
         }
         Spacer(Modifier.height(8.dp))
