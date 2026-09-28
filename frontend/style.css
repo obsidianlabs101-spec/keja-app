@@ -397,3 +397,10 @@ body.kb-open .bottom-nav{display:none}
 .alert-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px}
 .alert-card.unread{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 18%,transparent)}
 .chip.active{background:var(--primary);color:#fff}
+
+/* For rent / For sale pills, agent fee, host comments */
+.lt-pills{display:flex;gap:10px;margin:14px 0}
+.lt-pill{flex:1;padding:11px 0;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:800;font-size:13px}
+.lt-pill.active{background:var(--primary);color:#fff;border-color:transparent}
+.agent-fee{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-size:12px;font-weight:800}
+.host-comments{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin:14px 0}

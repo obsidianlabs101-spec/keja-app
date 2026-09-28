@@ -163,10 +163,20 @@ function goto(view, params) {
 }
 
 /* ---------------- Shared property card ---------------- */
+const COMMERCIAL_TYPES = ["Shop", "Office", "Warehouse", "Commercial"];
+function categoryOf(p) { return p.property_type === "Airbnb" ? "airbnb" : COMMERCIAL_TYPES.includes(p.property_type) ? "commercial" : "apartments"; }
+function priceSuffixText(p) { return p.listing_type === "sale" ? "for sale" : "/ month"; }
+function agentFeeHtml(p) { return p.agent_fee > 0 ? `<div class="agent-fee">Agent fee: ${money(p.agent_fee)}</div>` : ""; }
+// For rent / For sale pills. `active` is "rent", "sale" or null (both).
+function listingPillsHtml(active) {
+  return `<div class="lt-pills">${[["rent", "For rent"], ["sale", "For sale"]].map(([k, l]) => `<button type="button" class="lt-pill ${active === k ? "active" : ""}" data-lt="${k}">${l}</button>`).join("")}</div>`;
+}
+let homeListingType = null, discoverListingType = null;
+
 function propertyCard(p) {
   return `<article class="property" data-property="${p.id}">
  <img src="${mediaUrl(p.main_image_url)}" alt="${p.property_type} in ${p.area || p.county}">
- <div class="property-body"><div class="price">${money(p.price)}<span class="muted" style="font-size:12px;font-weight:500"> / month</span></div>
+ <div class="property-body"><div class="price">${money(p.price)}<span class="muted" style="font-size:12px;font-weight:500"> ${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}
  <div class="meta">${p.property_type} · ${p.area || p.county}</div>${p.proximity_note ? `<div class="tag">${p.proximity_note}</div>` : ""}${p.is_booked ? `<div class="tag" style="background:#FFF0F0;color:#C92D2D;margin-left:6px">Booked</div>` : ""}</div></article>`;
 }
 function bindCards() {
@@ -177,6 +187,7 @@ function bindCards() {
 function home() {
   app.innerHTML = `<section class="hero"><div class="eyebrow">WELCOME BACK 👋</div><h1>Find a place<br>you'll love.</h1><p>Discover apartments, Airbnb stays and shops/commercial spaces in one place.</p>
  <div class="search"><span style="padding:12px">⌕</span><input id="searchInput" placeholder="Search location, type or landmark"><button id="searchBtn">Search</button></div></section>
+ ${listingPillsHtml(homeListingType)}
  <div class="category-grid">
    <button class="category-card" data-cat="apartments"><span class="cat-icon">⌂</span><strong>Apartments</strong><small>Long-term homes</small></button>
    <button class="category-card" data-cat="airbnb"><span class="cat-icon">✦</span><strong>Airbnb</strong><small>Short stays</small></button>
@@ -193,11 +204,14 @@ function home() {
   document.querySelectorAll(".category-card").forEach(b => b.onclick = () => categoryPage(b.dataset.cat));
   document.querySelectorAll(".chips .chip").forEach(b => b.onclick = () => { document.getElementById("searchInput").value = b.dataset.area; search(); });
 
-  api("/properties/?limit=12").then(list => {
+  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = homeListingType === b.dataset.lt ? null : b.dataset.lt; home(); });
+
+  api("/properties/?limit=12" + (homeListingType ? "&listing_type=" + homeListingType : "")).then(list => {
     properties = list;
     const grid = document.getElementById("homeGrid");
     if (!grid) return; // user navigated away already
-    grid.innerHTML = list.length ? list.slice(0, 6).map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>No listings yet</h3><p class="muted">Be the first to list a property.</p></div>`;
+    const emptyMsg = homeListingType === "sale" ? "Nothing for sale yet" : homeListingType === "rent" ? "Nothing for rent yet" : "No listings yet";
+    grid.innerHTML = list.length ? list.slice(0, 6).map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`;
     bindCards();
   }).catch(() => {
     const grid = document.getElementById("homeGrid");
@@ -211,17 +225,11 @@ function categoryPage(cat) {
  <div class="grid" id="catGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backHome").onclick = () => goto("home");
 
-  if (cat === "commercial") {
-    document.getElementById("catGrid").outerHTML = `<div class="empty"><div class="emoji">▦</div><h3>Commercial spaces</h3><p class="muted">Shops, offices and other business spaces will appear here as landlords publish them.</p><button class="primary" id="browseAll">Browse all properties</button></div>`;
-    document.getElementById("browseAll").onclick = () => goto("discover");
-    return;
-  }
-
-  api("/properties/?limit=50").then(list => {
-    const filtered = list.filter(p => cat === "airbnb" ? p.property_type === "Airbnb" : p.property_type !== "Airbnb");
+  api("/properties/?limit=50" + (homeListingType ? "&listing_type=" + homeListingType : "")).then(list => {
+    const filtered = list.filter(p => categoryOf(p) === cat);
     const grid = document.getElementById("catGrid");
     if (!grid) return;
-    grid.innerHTML = filtered.length ? filtered.map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>No listings yet</h3></div>`;
+    grid.innerHTML = filtered.length ? filtered.map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>${cat === "commercial" ? "No shops or commercial spaces yet" : "No listings yet"}</h3><p class="muted">${cat === "commercial" ? "They appear here as soon as landlords publish them." : "Check back soon."}</p></div>`;
     bindCards();
   });
 }
@@ -249,15 +257,17 @@ function discover() {
   }
 
   app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
+ ${listingPillsHtml(discoverListingType)}
  <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div>
  <div class="swipe-hint">Scroll up or down to browse the next property</div></section>`;
 
-  api("/properties/discover?limit=30").then(list => {
+  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = discoverListingType === b.dataset.lt ? null : b.dataset.lt; discover(); });
+  api("/properties/discover?limit=30" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
     discoverQueue = list;
     const scroller = document.getElementById("discoverScroll");
     if (!scroller) return;
     if (!list.length) {
-      scroller.outerHTML = `<div class="empty" style="width:100%"><div class="emoji">🏠</div><h3>You've seen everything for now</h3><p class="muted">Check back later for new listings.</p></div>`;
+      scroller.outerHTML = `<div class="empty" style="width:100%"><div class="emoji">🏠</div><h3>${discoverListingType === "sale" ? "Nothing for sale yet" : discoverListingType === "rent" ? "Nothing for rent yet" : "You've seen everything for now"}</h3><p class="muted">Check back later for new listings.</p></div>`;
       return;
     }
     scroller.innerHTML = list.map(x => {
@@ -266,7 +276,7 @@ function discover() {
    <div class="swipe-gallery">${imgs.map(u => `<img src="${mediaUrl(u)}" alt="${x.property_type} in ${x.area || x.county}">`).join("")}</div>
    <div class="gradient"></div>
    ${imgs.length > 1 ? `<div class="gallery-dots">${imgs.map((_, i) => `<span class="dot${i === 0 ? " active" : ""}"></span>`).join("")}</div>` : ""}
-   <div class="swipe-info"><div class="price">${money(x.price)}</div><div class="meta">${x.property_type} · ${x.area || x.county}</div>${x.proximity_note ? `<div style="margin-top:9px">${x.proximity_note}</div>` : ""}</div>
+   <div class="swipe-info"><div class="price">${money(x.price)}${x.listing_type === "sale" ? ' <span style="font-size:12px;font-weight:500">for sale</span>' : ""}</div><div class="meta">${x.property_type} · ${x.area || x.county}</div>${x.proximity_note ? `<div style="margin-top:9px">${x.proximity_note}</div>` : ""}</div>
    <div class="discover-fab-stack">
      <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
      <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
@@ -347,6 +357,7 @@ function landlordProfile() {
   const landlordId = viewParams.landlordId;
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">LANDLORD</div><h2 id="landlordName">Loading…</h2></div><button class="chip" id="backBtn">Back</button></div>
  <div id="landlordMeta"></div>
+ <div class="host-comments"><strong>What renters say</strong><div class="muted" style="font-size:12px">Comments about this host</div><p class="muted" style="margin:10px 0 0">No comments yet. Renter comments about this host are coming soon.</p><button class="chip" disabled style="margin-top:10px;opacity:.6">Write a comment (coming soon)</button></div>
  <div class="grid" id="landlordGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backBtn").onclick = () => goto("discover");
   if (!landlordId) return;
@@ -760,7 +771,7 @@ function openProperty(id) {
 
   api(`/properties/${id}`).then(p => {
     modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${p.property_type}</h2><button class="close" id="close">×</button></div>
- <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button><div class="hero-overlay"><div class="landlord-chip" id="landlordChip"><div class="avatar-img fallback" style="width:38px;height:38px;max-height:none;border-radius:50%;font-size:16px">K</div><div><b>Landlord</b><small>View profile</small></div></div>${(p.amenities && p.amenities.length) ? `<div class="amenity-row">${amenityCards(p.amenities)}</div>` : ""}</div></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">/ month</span></div><p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
+ <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button><div class="hero-overlay"><div class="landlord-chip" id="landlordChip"><div class="avatar-img fallback" style="width:38px;height:38px;max-height:none;border-radius:50%;font-size:16px">K</div><div><b>Landlord</b><small>View profile</small></div></div>${(p.amenities && p.amenities.length) ? `<div class="amenity-row">${amenityCards(p.amenities)}</div>` : ""}</div></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}<p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
  <div id="contactArea"><button class="primary" style="width:100%;margin-top:8px" id="contactBtn">${p.is_booked ? "This property is booked" : "Get contact"}</button><p class="muted" style="font-size:11px;text-align:center">A KES 50 payment is matched first. The landlord's WhatsApp number is revealed after successful confirmation.</p></div></div>`;
     document.getElementById("close").onclick = hideModal;
     const contactBtn = document.getElementById("contactBtn");
@@ -908,16 +919,29 @@ function renderContactClaimForm(propertyId, status) {
 /* ---------------- Add property modal ---------------- */
 function openAdd() {
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Add property</h2><button class="close" id="close">×</button></div>
- <div class="form-grid" style="margin-top:18px"><label class="field"><span>Property type</span><select id="addType"><option>Bedsitter</option><option>1 Bedroom</option><option>2 Bedroom</option><option>Airbnb</option></select></label>
- <label class="field"><span>Price (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
+ <div class="form-grid" style="margin-top:18px"><label class="field"><span>Listing type</span><select id="addListing"><option value="rent">For rent</option><option value="sale">For sale</option></select></label>
+ <label class="field"><span>Category</span><select id="addCategory"><option value="apartments">Apartment</option><option value="airbnb">Airbnb</option><option value="commercial">Commercial / Shop</option></select></label>
+ <label class="field" id="addTypeWrap"><span>Property type</span><select id="addType"></select></label>
+ <label class="field"><span id="addPriceLabel">Monthly rent (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Agent fee in KES (optional)</span><input id="addAgentFee" type="number" placeholder="Leave empty if none"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
  <p class="muted field full" id="addError" style="font-size:12px;min-height:14px"></p>
  <button class="primary field full" id="publish">Publish listing</button></div>`;
   showModal();
   document.getElementById("close").onclick = hideModal;
+  const SUBTYPES = { apartments: ["Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House"], commercial: ["Shop", "Office", "Warehouse", "Commercial"] };
+  const syncTypes = () => {
+    const cat = document.getElementById("addCategory").value;
+    document.getElementById("addTypeWrap").hidden = cat === "airbnb";
+    document.getElementById("addType").innerHTML = (SUBTYPES[cat] || []).map(t => `<option>${t}</option>`).join("");
+  };
+  document.getElementById("addCategory").onchange = syncTypes;
+  document.getElementById("addListing").onchange = () => { document.getElementById("addPriceLabel").textContent = document.getElementById("addListing").value === "sale" ? "Asking price (KES)" : "Monthly rent (KES)"; };
+  syncTypes();
   document.getElementById("publish").onclick = async () => {
     const btn = document.getElementById("publish");
     const errEl = document.getElementById("addError");
-    const type = document.getElementById("addType").value;
+    const type = document.getElementById("addCategory").value === "airbnb" ? "Airbnb" : document.getElementById("addType").value;
+    const listingType = document.getElementById("addListing").value;
+    const agentFee = Number(document.getElementById("addAgentFee").value) || null;
     const price = Number(document.getElementById("addPrice").value);
     const location = document.getElementById("addLocation").value.trim();
     const landmark = document.getElementById("addLandmark").value.trim();
@@ -930,7 +954,7 @@ function openAdd() {
         method: "POST",
         body: JSON.stringify({
           title: `${type} in ${location}`,
-          price, property_type: type, county: location, area: location,
+          price, property_type: type, listing_type: listingType, agent_fee: agentFee, county: location, area: location,
           proximity_note: landmark || null, description: desc || null,
           amenities: pickedAmenities(modal),
         }),
