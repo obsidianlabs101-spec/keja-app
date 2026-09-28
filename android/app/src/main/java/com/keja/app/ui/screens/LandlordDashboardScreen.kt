@@ -258,7 +258,6 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
 }
 
 @Composable
-@Composable
 private fun PickerPillRow(
     options: List<Pair<String, String>>,
     selected: String,
@@ -475,7 +474,6 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     var category by remember { mutableStateOf("apartments") } // apartments | airbnb | commercial
     var subType by remember { mutableStateOf("Bedsitter") }
     var listingType by remember { mutableStateOf("rent") } // rent | sale
-    val type: String get() = if (category == "airbnb") "Airbnb" else subType
     var price by remember { mutableStateOf("") }
     var agentFee by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
@@ -593,10 +591,10 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                     try {
                         val prop = repo.createProperty(
                             PropertyCreateRequest(
-                                title = "$type in $location",
+                                title = "${if (category == "airbnb") "Airbnb" else subType} in $location",
                                 description = desc.ifBlank { null },
                                 price = priceValue,
-                                property_type = type,
+                                property_type = if (category == "airbnb") "Airbnb" else subType,
                                 listing_type = listingType,
                                 agent_fee = agentFee.toDoubleOrNull()?.takeIf { it > 0 },
                                 bedrooms = null,
