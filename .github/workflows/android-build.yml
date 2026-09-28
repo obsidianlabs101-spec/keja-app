@@ -34,6 +34,17 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      # Permanent signing key from repo secrets, so consecutive builds are
+      # signed identically and can install over each other (see
+      # android/app/build.gradle.kts).
+      - name: Restore signing keystore
+        env:
+          KEJA_KEYSTORE_B64: ${{ secrets.KEJA_KEYSTORE_B64 }}
+        run: |
+          echo "$KEJA_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/keja-release.jks"
+          echo "KEJA_KEYSTORE_PATH=$RUNNER_TEMP/keja-release.jks" >> "$GITHUB_ENV"
+          echo "KEJA_KEYSTORE_PASSWORD=${{ secrets.KEJA_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+
       - name: Register Kotlin compiler problem matcher
         run: echo "::add-matcher::.github/kotlinc-matcher.json"
 
@@ -80,6 +91,12 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+      # Tiny file the in-app updater reads (a plain public download, so no
+      # GitHub API rate limits) to learn the newest build number.
+      - name: Write version.json
+        if: steps.build.outcome == 'success'
+        run: echo '{"build":${{ github.run_number }}}' > app/build/outputs/apk/debug/keja-version.json
+
       # Actions artifacts require a GitHub login to download, which is no
       # good for a public "Download" button on the website. A GitHub
       # Release asset is a plain public URL with no login wall, and this
@@ -90,9 +107,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: "Keja Android (latest build)"
+          name: "Keja Android (build ${{ github.run_number }})"
           body: "Automatically rebuilt from the latest commit to main. Debug build — not signed for the Play Store."
           make_latest: true
-          files: android/app/build/outputs/apk/debug/*.apk
+          files: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/debug/keja-version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the in-app updater saves the downloaded APK before handing it to
+     the system installer (see AppUpdater.kt). -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

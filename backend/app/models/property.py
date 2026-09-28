@@ -29,6 +29,13 @@ class Property(Base):
     price = Column(Float, nullable=False)
 
     property_type = Column(String, nullable=False)  # e.g. "Bedsitter", "1 Bedroom", "2 Bedroom", "Studio"
+    # "rent" (default, monthly) or "sale" (one-off asking price) — drives the
+    # For rent / For sale filter on Home and Discover, and whether "/ month"
+    # is shown next to the price.
+    listing_type = Column(String, nullable=False, default="rent", server_default="rent")
+    # Optional one-off fee (KES) the landlord's agent charges the renter/buyer.
+    # NULL/0 = no agent fee, so nothing is shown.
+    agent_fee = Column(Float, nullable=True)
     bedrooms = Column(Integer, nullable=True)
     bathrooms = Column(Integer, nullable=True)
 

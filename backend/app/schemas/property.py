@@ -39,6 +39,8 @@ class PropertyCreate(BaseModel):
     description: Optional[str] = None
     price: float
     property_type: str
+    listing_type: str = "rent"  # "rent" or "sale"
+    agent_fee: Optional[float] = None  # optional agent fee in KES
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     county: str
@@ -59,6 +61,8 @@ class PropertyUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     property_type: Optional[str] = None
+    listing_type: Optional[str] = None
+    agent_fee: Optional[float] = None
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     county: Optional[str] = None
@@ -92,6 +96,8 @@ class PropertyRead(BaseModel):
     description: Optional[str] = None
     price: float
     property_type: str
+    listing_type: str = "rent"
+    agent_fee: Optional[float] = None
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     county: str
@@ -123,6 +129,7 @@ class PropertyFilters(BaseModel):
     max_price: Optional[float] = None
     bedrooms: Optional[int] = None
     property_type: Optional[str] = None
+    listing_type: Optional[str] = None  # "rent" or "sale"
     q: Optional[str] = None  # free-text search across title/area/county/proximity_note
 
 

@@ -142,6 +142,8 @@ def search_properties(db: Session, filters: PropertyFilters, limit: int = 50, of
         query = query.filter(Property.bedrooms == filters.bedrooms)
     if filters.property_type:
         query = query.filter(Property.property_type.ilike(filters.property_type))
+    if filters.listing_type:
+        query = query.filter(Property.listing_type == filters.listing_type)
     if filters.q:
         like = f"%{filters.q}%"
         query = query.filter(
@@ -183,6 +185,8 @@ def discover_queue(db: Session, user_id: UUID, filters: PropertyFilters, limit: 
         query = query.filter(Property.bedrooms == filters.bedrooms)
     if filters.property_type:
         query = query.filter(Property.property_type.ilike(filters.property_type))
+    if filters.listing_type:
+        query = query.filter(Property.listing_type == filters.listing_type)
 
     return query.order_by(Property.created_at.desc()).limit(limit).all()
 

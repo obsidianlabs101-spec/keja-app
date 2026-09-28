@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.keja.app.R
 import com.keja.app.data.AppContainer
+import com.keja.app.data.AppUpdater
+import com.keja.app.data.UpdateCheck
 import com.keja.app.ui.components.Avatar
 import com.keja.app.ui.components.KejaPrimaryButton
 import com.keja.app.ui.components.KejaSecondaryButton
@@ -63,6 +66,74 @@ fun ProfileScreen(
     val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = null)
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDarkNow = darkOverride ?: systemDark
+
+    var updateUi by remember { mutableStateOf<UpdateUi?>(null) }
+    var pendingApk by remember { mutableStateOf<java.io.File?>(null) }
+    val installedBuild = remember { AppUpdater.installedBuild(context) }
+
+    fun startDownload() {
+        updateUi = UpdateUi.Downloading(0f)
+        scope.launch {
+            try {
+                val apk = AppUpdater.download(context) { p -> updateUi = UpdateUi.Downloading(p) }
+                pendingApk = apk
+                if (AppUpdater.canInstall(context)) {
+                    AppUpdater.install(context, apk)
+                    updateUi = null
+                } else {
+                    updateUi = UpdateUi.NeedsPermission
+                }
+            } catch (e: Exception) {
+                updateUi = UpdateUi.Message(e.message ?: "The download didn't finish. Please try again.")
+            }
+        }
+    }
+
+    updateUi?.let { ui ->
+        when (ui) {
+            is UpdateUi.Checking -> AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Checking for updates…") },
+                text = { com.keja.app.ui.components.KejaLoader(size = 40.dp) },
+                confirmButton = {},
+            )
+            is UpdateUi.Message -> AlertDialog(
+                onDismissRequest = { updateUi = null },
+                title = { Text("App update") },
+                text = { Text(ui.text) },
+                confirmButton = { TextButton(onClick = { updateUi = null }) { Text("OK") } },
+            )
+            is UpdateUi.Available -> AlertDialog(
+                onDismissRequest = { updateUi = null },
+                title = { Text("Update available") },
+                text = { Text("A newer version of Keja is ready (build ${ui.latest}, you have ${ui.installed}). It installs over the current app — your login and settings are kept.") },
+                confirmButton = { TextButton(onClick = { startDownload() }) { Text("Download & install") } },
+                dismissButton = { TextButton(onClick = { updateUi = null }) { Text("Later") } },
+            )
+            is UpdateUi.Downloading -> AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Downloading update…") },
+                text = {
+                    if (ui.progress >= 0f) LinearProgressIndicator(progress = { ui.progress }, modifier = Modifier.fillMaxWidth())
+                    else LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                },
+                confirmButton = {},
+            )
+            is UpdateUi.NeedsPermission -> AlertDialog(
+                onDismissRequest = { updateUi = null },
+                title = { Text("Allow installing updates") },
+                text = { Text("Android needs your OK once before Keja can install its own updates. Tap \"Open settings\", switch on \"Allow from this source\", come back and tap Install.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val apk = pendingApk
+                        if (apk != null && AppUpdater.canInstall(context)) { AppUpdater.install(context, apk); updateUi = null }
+                        else AppUpdater.openInstallPermissionSettings(context)
+                    }) { Text("Open settings / Install") }
+                },
+                dismissButton = { TextButton(onClick = { updateUi = null }) { Text("Cancel") } },
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         runCatching { repo.refreshMe() }
@@ -259,6 +330,26 @@ fun ProfileScreen(
             )
         }
 
+        Spacer(Modifier.height(22.dp))
+        SectionLabel("App")
+        Spacer(Modifier.height(10.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "App update",
+            subtitle = "You're on build $installedBuild — check for a newer version",
+            actionLabel = "Check",
+            onClick = {
+                updateUi = UpdateUi.Checking
+                scope.launch {
+                    updateUi = when (val r = AppUpdater.check(context)) {
+                        is UpdateCheck.Available -> UpdateUi.Available(r.latestBuild, r.installedBuild)
+                        is UpdateCheck.UpToDate -> UpdateUi.Message("You're on the latest version (build ${r.installedBuild}).")
+                        is UpdateCheck.Failed -> UpdateUi.Message(r.reason)
+                    }
+                }
+            },
+        )
+
         Spacer(Modifier.height(28.dp))
 
         // Small brand footer — a quiet signature rather than another action.
@@ -410,4 +501,12 @@ private fun SettingRow(
         Spacer(Modifier.width(8.dp))
         KejaSecondaryButton(text = actionLabel, onClick = onClick)
     }
+}
+
+private sealed interface UpdateUi {
+    data object Checking : UpdateUi
+    data class Message(val text: String) : UpdateUi
+    data class Available(val latest: Int, val installed: Int) : UpdateUi
+    data class Downloading(val progress: Float) : UpdateUi
+    data object NeedsPermission : UpdateUi
 }

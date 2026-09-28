@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -257,6 +258,40 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
 }
 
 @Composable
+@Composable
+private fun PickerPillRow(
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    wrap: Boolean = false,
+) {
+    val palette = LocalKejaPalette.current
+    val content: @Composable () -> Unit = {
+        options.forEach { (key, label) ->
+            val active = key == selected
+            Box(
+                Modifier
+                    .clip(com.keja.app.ui.theme.KejaShapes.pill)
+                    .background(if (active) palette.primary else palette.card)
+                    .border(1.dp, if (active) Color.Transparent else palette.border, com.keja.app.ui.theme.KejaShapes.pill)
+                    .clickable { onSelect(key) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) {
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) Color.White else palette.text)
+            }
+        }
+    }
+    if (wrap) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) { content() }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+    }
+}
+
+@Composable
 private fun LandlordStatusCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
@@ -437,8 +472,12 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     val repo = remember { AppContainer.repository(context) }
     val scope = rememberCoroutineScope()
 
-    var type by remember { mutableStateOf("Bedsitter") }
+    var category by remember { mutableStateOf("apartments") } // apartments | airbnb | commercial
+    var subType by remember { mutableStateOf("Bedsitter") }
+    var listingType by remember { mutableStateOf("rent") } // rent | sale
+    val type: String get() = if (category == "airbnb") "Airbnb" else subType
     var price by remember { mutableStateOf("") }
+    var agentFee by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var landmark by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
@@ -454,10 +493,57 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
         Text("New listing", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Spacer(Modifier.height(14.dp))
-        KejaTextField(type, { type = it }, "Property type (e.g. Bedsitter, 1 Bedroom, Airbnb)")
+
+        Spacer(Modifier.height(16.dp))
+        Text("Listing type", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        PickerPillRow(
+            options = listOf("rent" to "For rent", "sale" to "For sale"),
+            selected = listingType,
+            onSelect = { listingType = it },
+        )
+
+        Spacer(Modifier.height(16.dp))
+        Text("Category", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        PickerPillRow(
+            options = listOf("apartments" to "Apartment", "airbnb" to "Airbnb", "commercial" to "Commercial / Shop"),
+            selected = category,
+            onSelect = {
+                category = it
+                subType = when (it) {
+                    "commercial" -> "Shop"
+                    else -> "Bedsitter"
+                }
+            },
+        )
+
+        if (category == "apartments") {
+            Spacer(Modifier.height(12.dp))
+            Text("Property type", fontSize = 12.sp, color = Color.Gray)
+            Spacer(Modifier.height(6.dp))
+            PickerPillRow(
+                options = listOf("Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House").map { it to it },
+                selected = subType,
+                onSelect = { subType = it },
+                wrap = true,
+            )
+        } else if (category == "commercial") {
+            Spacer(Modifier.height(12.dp))
+            Text("What kind of space?", fontSize = 12.sp, color = Color.Gray)
+            Spacer(Modifier.height(6.dp))
+            PickerPillRow(
+                options = listOf("Shop", "Office", "Warehouse", "Commercial").map { it to it },
+                selected = subType,
+                onSelect = { subType = it },
+                wrap = true,
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        KejaTextField(price, { price = it }, if (listingType == "sale") "Asking price (KES)" else "Monthly rent (KES)")
         Spacer(Modifier.height(12.dp))
-        KejaTextField(price, { price = it }, "Monthly rent (KES)")
+        KejaTextField(agentFee, { agentFee = it }, "Agent fee in KES (optional — leave empty if none)")
         Spacer(Modifier.height(12.dp))
         KejaTextField(location, { location = it }, "Location / area")
         Spacer(Modifier.height(12.dp))
@@ -511,6 +597,8 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                                 description = desc.ifBlank { null },
                                 price = priceValue,
                                 property_type = type,
+                                listing_type = listingType,
+                                agent_fee = agentFee.toDoubleOrNull()?.takeIf { it > 0 },
                                 bedrooms = null,
                                 bathrooms = null,
                                 county = location,

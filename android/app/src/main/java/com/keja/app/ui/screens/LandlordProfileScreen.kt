@@ -4,7 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,7 +73,9 @@ fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty
                             ProfileStat("Properties uploaded", d.property_count.toString(), Modifier.weight(1f))
                             ProfileStat("Available now", d.properties.size.toString(), Modifier.weight(1f))
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(14.dp))
+                        HostCommentsPlaceholder()
+                        Spacer(Modifier.height(14.dp))
                         Text(
                             if (d.properties.isEmpty()) "No available listings right now" else "Available listings",
                             modifier = Modifier.fillMaxWidth(),
@@ -93,5 +98,30 @@ private fun ProfileStat(label: String, value: String, modifier: Modifier = Modif
     ) {
         Text(value, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
         Text(label, fontSize = 11.sp, color = palette.muted)
+    }
+}
+
+/** Placeholder only — comments about a host aren't built yet. Keeps the
+ * spot (and the layout) ready so the real feature can drop in later. */
+@Composable
+private fun HostCommentsPlaceholder() {
+    val palette = LocalKejaPalette.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(palette.card).padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = palette.primary, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text("What renters say", fontWeight = FontWeight.Bold, color = palette.text)
+                Text("Comments about this host", fontSize = 11.sp, color = palette.muted)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("No comments yet. Renter comments about this host are coming soon.", fontSize = 13.sp, color = palette.muted)
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Write a comment (coming soon)") }
     }
 }

@@ -11,11 +11,32 @@ android {
         applicationId = "com.keja.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
+        // CI sets GITHUB_RUN_NUMBER, so every build has a higher versionCode
+        // than the last — that's what the in-app updater compares against.
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
         versionName = "1.0"
     }
 
+    // One permanent signing key (kept in GitHub secrets, decoded by CI).
+    // Without this, every CI build got a brand-new random debug key, and
+    // Android refuses to install an update signed with a different key —
+    // which is why every fix used to need an uninstall first.
+    val kejaKeystore = System.getenv("KEJA_KEYSTORE_PATH")
+    if (kejaKeystore != null) {
+        signingConfigs {
+            create("keja") {
+                storeFile = file(kejaKeystore)
+                storePassword = System.getenv("KEJA_KEYSTORE_PASSWORD")
+                keyAlias = "keja"
+                keyPassword = System.getenv("KEJA_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (kejaKeystore != null) signingConfig = signingConfigs.getByName("keja")
+        }
         release {
             isMinifyEnabled = false
         }

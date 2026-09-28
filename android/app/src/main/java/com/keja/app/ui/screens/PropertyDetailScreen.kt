@@ -204,10 +204,22 @@ fun PropertyDetailScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(formatKes(p.price), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
                     Spacer(Modifier.width(6.dp))
-                    Text("/ month", fontSize = 13.sp, color = palette.muted)
+                    Text(if (p.listing_type == "sale") "for sale" else "/ month", fontSize = 13.sp, color = palette.muted)
                     Spacer(Modifier.weight(1f))
                     if (p.is_booked) StatusPill("Booked", KejaColors.BookedBg, KejaColors.BookedText)
                     else StatusPill("Available", KejaColors.AvailableBg, KejaColors.AvailableText)
+                }
+                if ((p.agent_fee ?: 0.0) > 0.0) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier
+                            .clip(com.keja.app.ui.theme.KejaShapes.pill)
+                            .background(palette.primaryLight)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Agent fee: ${formatKes(p.agent_fee!!)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = palette.primary)
+                    }
                 }
                 Spacer(Modifier.height(6.dp))
                 Text("${p.area ?: p.county}${p.proximity_note?.let { " · $it" } ?: ""}", fontWeight = FontWeight.SemiBold, color = palette.text)

@@ -33,6 +33,7 @@ def search(
     max_price: Optional[float] = None,
     bedrooms: Optional[int] = None,
     property_type: Optional[str] = None,
+    listing_type: Optional[str] = None,
     q: Optional[str] = None,
     limit: int = Query(50, le=100),
     offset: int = 0,
@@ -40,7 +41,7 @@ def search(
 ):
     filters = PropertyFilters(
         county=county, area=area, min_price=min_price, max_price=max_price,
-        bedrooms=bedrooms, property_type=property_type, q=q,
+        bedrooms=bedrooms, property_type=property_type, listing_type=listing_type, q=q,
     )
     return property_service.search_properties(db, filters, limit=limit, offset=offset)
 
@@ -53,13 +54,14 @@ def discover(
     max_price: Optional[float] = None,
     bedrooms: Optional[int] = None,
     property_type: Optional[str] = None,
+    listing_type: Optional[str] = None,
     limit: int = Query(20, le=50),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     filters = PropertyFilters(
         county=county, area=area, min_price=min_price, max_price=max_price,
-        bedrooms=bedrooms, property_type=property_type,
+        bedrooms=bedrooms, property_type=property_type, listing_type=listing_type,
     )
     return property_service.discover_queue(db, current_user.id, filters, limit=limit)
 

@@ -49,6 +49,7 @@ fun DiscoverScreen(
     var loading by remember { mutableStateOf(true) }
     var interestedIds by remember { mutableStateOf(setOf<String>()) }
     var uiHidden by remember { mutableStateOf(false) }
+    var listingFilter by remember { mutableStateOf<String?>(null) } // "rent" | "sale" | null (both)
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
@@ -87,41 +88,76 @@ fun DiscoverScreen(
         return
     }
 
-    val pagerState = rememberPagerState(pageCount = { properties.size })
+    val shown = properties.filter { listingFilter == null || it.listing_type == listingFilter }
 
     Column(Modifier.fillMaxSize().background(Color.Black)) {
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val property = properties[page]
-            val isSaved = interestedIds.contains(property.id)
+        if (shown.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DiscoverStateCard(
+                    icon = Icons.Filled.Search,
+                    title = if (listingFilter == "sale") "Nothing for sale yet" else "Nothing for rent yet",
+                    subtitle = "Try the other tab, or check back soon.",
+                )
+            }
+        } else {
+            androidx.compose.runtime.key(listingFilter) {
+                val pagerState = rememberPagerState(pageCount = { shown.size })
+                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                    val property = shown[page]
+                    val isSaved = interestedIds.contains(property.id)
 
-            DiscoverCard(
-                property = property,
-                isSaved = isSaved,
-                uiHidden = uiHidden,
-                onTap = { onOpenProperty(property.id) },
-                onLandlordClick = { onOpenLandlord(property.landlord_id) },
-                onInterestedClick = {
-                    scope.launch {
-                        runCatching { repo.swipe(property.id, "right") }
-                        interestedIds = interestedIds + property.id
-                    }
-                },
-                onHideToggle = { uiHidden = !uiHidden },
-            )
+                    DiscoverCard(
+                        property = property,
+                        isSaved = isSaved,
+                        uiHidden = uiHidden,
+                        onTap = { onOpenProperty(property.id) },
+                        onLandlordClick = { onOpenLandlord(property.landlord_id) },
+                        onInterestedClick = {
+                            scope.launch {
+                                runCatching { repo.swipe(property.id, "right") }
+                                interestedIds = interestedIds + property.id
+                            }
+                        },
+                        onHideToggle = { uiHidden = !uiHidden },
+                    )
+                }
+            }
         }
 
         if (!uiHidden) {
-            Text(
-                "Scroll up or down to browse the next property",
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 11.sp,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.35f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
+            Column(Modifier.align(Alignment.TopCenter).padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    Modifier
+                        .background(Color.Black.copy(alpha = 0.45f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    listOf("rent" to "For rent", "sale" to "For sale").forEach { (key, label) ->
+                        val active = listingFilter == key
+                        Text(
+                            label,
+                            color = if (active) Color.Black else Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                                .background(if (active) Color.White else Color.Transparent)
+                                .clickableSimple { listingFilter = if (active) null else key }
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Scroll up or down to browse the next property",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 11.sp,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.35f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
         }
     }
     }

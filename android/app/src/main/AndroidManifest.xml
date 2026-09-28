@@ -5,6 +5,9 @@
     <!-- Android 13+ requires explicit runtime consent to show notifications
          in the system tray; requested from MainActivity on first launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets Keja hand a downloaded update to the system installer (the
+         person still has to allow "install unknown apps" for Keja once). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="true"
@@ -12,6 +15,15 @@
         android:label="Keja"
         android:theme="@style/Theme.Keja"
         android:usesCleartextTraffic="false">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

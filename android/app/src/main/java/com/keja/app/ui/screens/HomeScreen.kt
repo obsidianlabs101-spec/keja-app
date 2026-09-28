@@ -38,6 +38,16 @@ import com.keja.app.ui.theme.KejaShapes
 import com.keja.app.ui.theme.LocalKejaPalette
 import kotlinx.coroutines.launch
 
+/** Property types a landlord can pick as "commercial" (see AddPropertyForm).
+ * Shared so Home's Shops filter and Discover both agree on what counts. */
+val COMMERCIAL_TYPES = setOf("Shop", "Office", "Warehouse", "Commercial")
+
+fun propertyCategoryOf(p: Property): String = when {
+    p.property_type == "Airbnb" -> "airbnb"
+    p.property_type in COMMERCIAL_TYPES -> "commercial"
+    else -> "apartments"
+}
+
 @Composable
 fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) {
     val palette = LocalKejaPalette.current
@@ -49,14 +59,12 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
     var properties by remember { mutableStateOf<List<Property>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedListingType by remember { mutableStateOf<String?>(null) } // "rent" | "sale" | null (both)
 
-    val displayedProperties = remember(properties, selectedCategory) {
-        when (selectedCategory) {
-            "airbnb" -> properties.filter { it.property_type == "Airbnb" }
-            "apartments" -> properties.filter { it.property_type != "Airbnb" }
-            "commercial" -> emptyList()
-            else -> properties
-        }
+    val displayedProperties = remember(properties, selectedCategory, selectedListingType) {
+        properties
+            .filter { selectedCategory == null || propertyCategoryOf(it) == selectedCategory }
+            .filter { selectedListingType == null || it.listing_type == selectedListingType }
     }
 
     fun load(searchQuery: String? = null) {
@@ -94,7 +102,12 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
                     onSearch = { load(query.ifBlank { null }) },
                 )
 
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(14.dp))
+                ListingTypePills(
+                    selected = selectedListingType,
+                    onSelect = { selectedListingType = if (selectedListingType == it) null else it },
+                )
+                Spacer(Modifier.height(18.dp))
                 CategoryRow(selected = selectedCategory, onSelect = { selectedCategory = if (selectedCategory == it) null else it })
                 Spacer(Modifier.height(18.dp))
                 com.keja.app.ui.components.AdBanner(placement = "home")
@@ -112,7 +125,7 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
             }
         } else if (displayedProperties.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                EmptyHomeState(commercial = selectedCategory == "commercial")
+                EmptyHomeState(commercial = selectedCategory == "commercial", forSale = selectedListingType == "sale")
             }
         } else {
             items(displayedProperties) { p ->
@@ -179,8 +192,19 @@ private fun BasicTextFieldSearch(query: String, onQueryChange: (String) -> Unit,
 }
 
 @Composable
-private fun EmptyHomeState(commercial: Boolean) {
+private fun EmptyHomeState(commercial: Boolean, forSale: Boolean = false) {
     val palette = LocalKejaPalette.current
+    val title = when {
+        commercial && forSale -> "No commercial properties for sale yet"
+        commercial -> "No commercial listings yet"
+        forSale -> "Nothing for sale yet"
+        else -> "No listings yet"
+    }
+    val subtitle = when {
+        commercial -> "Check back as landlords publish shops and offices."
+        forSale -> "Landlords haven't listed any properties for sale in this category yet."
+        else -> "Be the first to list a property, or check back soon."
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -193,18 +217,36 @@ private fun EmptyHomeState(commercial: Boolean) {
             Icon(Icons.Outlined.Home, contentDescription = null, tint = palette.primary, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.height(14.dp))
-        Text(
-            if (commercial) "No commercial listings yet" else "No listings yet",
-            fontWeight = FontWeight.Bold,
-            color = palette.text,
-        )
+        Text(title, fontWeight = FontWeight.Bold, color = palette.text, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Spacer(Modifier.height(4.dp))
-        Text(
-            if (commercial) "Check back as landlords publish shops and offices." else "Be the first to list a property, or check back soon.",
-            fontSize = 12.sp,
-            color = palette.muted,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        Text(subtitle, fontSize = 12.sp, color = palette.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
+}
+
+@Composable
+private fun ListingTypePills(selected: String?, onSelect: (String) -> Unit) {
+    val palette = LocalKejaPalette.current
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        listOf("rent" to "For rent", "sale" to "For sale").forEach { (key, label) ->
+            val active = selected == key
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clip(KejaShapes.pill)
+                    .background(if (active) palette.primary else palette.card)
+                    .border(1.dp, if (active) Color.Transparent else palette.border, KejaShapes.pill)
+                    .clickable { onSelect(key) }
+                    .padding(vertical = 11.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (active) Color.White else palette.text,
+                )
+            }
+        }
     }
 }
 

@@ -28,6 +28,8 @@ data class Property(
     val amenities: List<String> = emptyList(),
     val review_status: String? = null,
     val review_note: String? = null,
+    val listing_type: String = "rent",
+    val agent_fee: Double? = null,
 )
 
 data class LandlordSummary(
@@ -86,6 +88,8 @@ data class PropertyCreateRequest(
     val description: String?,
     val price: Double,
     val property_type: String,
+    val listing_type: String = "rent",
+    val agent_fee: Double? = null,
     val bedrooms: Int?,
     val bathrooms: Int?,
     val county: String,
@@ -97,6 +101,7 @@ data class PropertyUpdateRequest(
     val is_booked: Boolean? = null,
     val is_available: Boolean? = null,
     val amenities: List<String>? = null,
+    val listing_type: String? = null,
 )
 
 data class AvatarResponse(val profile_pic_url: String)
