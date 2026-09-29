@@ -1,7 +1,8 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from app.core.limiter import limiter
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -390,7 +391,9 @@ def update_profile(
 
 
 @router.post("/host-verification/request")
+@limiter.limit("5/minute")
 def request_host_verify(
+    request: Request,
     data: HostProfileUpdate,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -714,7 +717,9 @@ def _clean_notification_context(context: str) -> str:
 
 
 @router.post("/me/id-image")
+@limiter.limit("5/minute")
 async def upload_my_id_image(
+    request: Request,
     file: UploadFile = File(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),

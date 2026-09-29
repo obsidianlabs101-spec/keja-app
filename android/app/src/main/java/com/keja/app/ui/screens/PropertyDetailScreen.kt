@@ -364,7 +364,7 @@ private fun PhotoViewerOverlay(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            KejaSecondaryButton(text = "← Back", onClick = onBack)
+            KejaSecondaryButton(text = "Back", onClick = onBack)
             KejaPrimaryButton(text = if (isBooked) "Booked" else "Get contact", enabled = !isBooked, onClick = onContact)
         }
     }
@@ -384,7 +384,7 @@ private fun MpesaPayCard(
     var copied by remember { mutableStateOf(false) }
 
     Column {
-        TextButton(onClick = onBack) { Text("← Back") }
+        TextButton(onClick = onBack) { Text("Back") }
         Column(
             Modifier
                 .fillMaxWidth()

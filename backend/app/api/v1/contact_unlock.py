@@ -2,7 +2,8 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.core.limiter import limiter
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -42,7 +43,8 @@ def get_status(property_id: UUID, current_user=Depends(get_current_user), db: Se
 
 
 @router.post("/{property_id}/use-free-credit", response_model=ContactUnlockStatus)
-def use_free_credit(property_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def use_free_credit(request: Request, property_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     prop = property_service.get_property(db, property_id)
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
@@ -56,7 +58,9 @@ def use_free_credit(property_id: UUID, current_user=Depends(get_current_user), d
 
 
 @router.post("/{property_id}/claim", response_model=ContactUnlockStatus)
+@limiter.limit("6/minute")
 def submit_claim(
+    request: Request,
     property_id: UUID,
     payload: BuyerClaimRequest,
     current_user=Depends(get_current_user),
@@ -81,7 +85,8 @@ def submit_claim(
 
 
 @router.post("/{property_id}/request-referral")
-def request_referral_unlock(property_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def request_referral_unlock(request: Request, property_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     """The renter chose "share & unlock free" for this property. We remember
     that; the moment a friend signs up through their link (auth_service),
     the landlord's number is sent to their Alerts automatically."""

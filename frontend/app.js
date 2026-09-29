@@ -736,7 +736,7 @@ function openPhotoViewer(p) {
   v.innerHTML = `<div class="pv-count" id="pvCount">1 / ${photos.length}</div>
  <div class="pv-track" id="pvTrack">${photos.map(u => `<div class="pv-slide"><img src="${escHtml(mediaUrl(u))}" alt=""></div>`).join("")}</div>
  ${photos.length > 1 ? `<button class="pv-nav pv-prev" id="pvPrev" aria-label="Previous photo">‹</button><button class="pv-nav pv-next" id="pvNext" aria-label="Next photo">›</button>` : ""}
- <div class="pv-bar"><button class="pv-back" id="pvBack" type="button">← Back</button><button class="pv-contact" id="pvContact" type="button"${p.is_booked ? " disabled" : ""}>${p.is_booked ? "Booked" : "Get contact"}</button></div>`;
+ <div class="pv-bar"><button class="pv-back" id="pvBack" type="button">Back</button><button class="pv-contact" id="pvContact" type="button"${p.is_booked ? " disabled" : ""}>${p.is_booked ? "Booked" : "Get contact"}</button></div>`;
   document.body.appendChild(v);
 
   const track = v.querySelector("#pvTrack");
@@ -883,7 +883,7 @@ function renderContactClaimForm(propertyId, status) {
   const area = document.getElementById("contactArea");
   if (!area) return;
   const canGoBack = isLoggedIn() && currentUser && !currentUser.referral_bonus_granted;
-  area.innerHTML = `${canGoBack ? `<button class="chip" id="backToChoiceBtn" style="margin-bottom:10px">← Back</button>` : ""}
+  area.innerHTML = `${canGoBack ? `<button class="chip" id="backToChoiceBtn" style="margin-bottom:10px">Back</button>` : ""}
  <div class="pay-card"><h3>Pay KES ${MPESA_TILL.amount} via M-Pesa</h3><p class="muted" style="margin:2px 0 14px;font-size:12px">One-time payment to unlock this landlord's contact.</p>
  <ol class="pay-steps">
   <li><i>1</i><div><b>Open M-Pesa</b><span>Go to Lipa na M-Pesa → Buy Goods and Services.</span></div></li>
@@ -1065,7 +1065,6 @@ function openLogin() {
   <label class="field" style="margin-top:12px"><span>Password</span><input id="authPass" type="password" placeholder="••••••••"></label>
   <p class="muted" id="authError" style="font-size:12px;min-height:14px;text-align:center"></p>
   <button class="primary" style="width:100%;margin-top:16px" id="loginSubmit">${mode === "login" ? "Log in" : "Create account"}</button>
-  <a class="chip" href="https://github.com/obsidianlabs101-spec/keja-app/releases/download/android-latest/app-debug.apk" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;text-decoration:none;box-sizing:border-box">⬇ Download Android app</a>
   <p class="auth-note">By continuing, you agree to Keja's terms and privacy policy. Landlords: request landlord access from your profile after signing up.</p></div>`;
     document.getElementById("close").onclick = hideModal;
     modal.querySelectorAll(".auth-tabs button").forEach(b => b.onclick = () => { mode = b.dataset.mode; draw(); });
@@ -1107,7 +1106,7 @@ function avatarHtml(url, name, size) {
 }
 function openLandlordModal(d, backId) {
   const L = d.landlord;
-  modal.innerHTML = `<div class="modal-head"><button class="chip" id="lpBack">← Back</button><button class="close" id="close">×</button></div>
+  modal.innerHTML = `<div class="modal-head"><button class="chip" id="lpBack">Back</button><button class="close" id="close">×</button></div>
  <div class="lp-head">${avatarHtml(L.profile_picture, L.full_name, 92)}<h2 style="margin:10px 0 2px">${escHtml(L.full_name)}</h2>${L.username ? `<div class="muted">@${escHtml(L.username)}</div>` : ""}${L.bio ? `<p class="muted" style="margin:8px 0 0">${escHtml(L.bio)}</p>` : ""}
  <div class="lp-stats"><div><strong>${d.property_count}</strong><small>Properties uploaded</small></div><div><strong>${d.properties.length}</strong><small>Available now</small></div></div></div>
  <div class="lp-list">${d.properties.length ? d.properties.map(p => `<div class="lp-item" data-id="${p.id}"><img src="${escHtml(mediaUrl(p.main_image_url))}" alt=""><div><b>${money(p.price)}</b><span class="muted" style="display:block;font-size:12px">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</span></div></div>`).join("") : `<p class="muted" style="text-align:center">No available listings right now.</p>`}</div>`;

@@ -1,5 +1,5 @@
 # app/api/v1/properties.py
-import os
+import io
 import uuid
 from typing import List, Optional
 from uuid import UUID
@@ -138,15 +138,32 @@ async def upload_image(
 ):
     prop = _own_or_404(db, property_id, current_user.id)
 
-    _, ext = os.path.splitext(file.filename or "")
-    ext = ext.lower() if ext.lower() in {".png", ".jpg", ".jpeg", ".webp"} else ".jpg"
-    content_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(ext, "image/jpeg")
-    filename = f"{uuid.uuid4().hex}{ext}"
-
     max_bytes = 15 * 1024 * 1024
     data = await file.read(max_bytes + 1)
     if len(data) > max_bytes:
         raise HTTPException(status_code=400, detail="Image too large (15MB max)")
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    # SECURITY: the upload's declared filename/extension is attacker-controlled
+    # and was previously trusted outright — a non-image file renamed to
+    # "x.jpg" would have been stored and served back as image/jpeg. Verify
+    # the actual bytes decode as a real image before it ever reaches storage,
+    # the same check already used for ad creatives and ID photos.
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data))
+        fmt = (img.format or "").upper()
+        img.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="That file is not a valid image")
+    ext_by_format = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
+    content_type_by_format = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+    if fmt not in ext_by_format:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG or WEBP images are allowed")
+    ext = ext_by_format[fmt]
+    content_type = content_type_by_format[fmt]
+    filename = f"{uuid.uuid4().hex}{ext}"
 
     # Render's free web-service disk is EPHEMERAL — anything saved to
     # local disk vanishes on the next deploy or restart. Property photos
