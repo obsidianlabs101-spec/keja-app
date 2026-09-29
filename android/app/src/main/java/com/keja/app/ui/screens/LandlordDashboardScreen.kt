@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -100,18 +101,25 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
     }
 
     Column(Modifier.fillMaxSize().background(palette.bg)) {
-        Row(
-            Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text("LANDLORD", color = palette.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                Text("Dashboard", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
-            }
-            if (user?.is_host == true) {
-                KejaPrimaryButton(text = "＋ Add", onClick = { showAddForm = true })
-            } else {
+        if (user?.is_host == true) {
+            LandlordHero(
+                name = user?.name,
+                avatarUrl = avatarUrl,
+                avatarMsg = avatarMsg,
+                onChangePhoto = { avatarPicker.launch("image/*") },
+                onViewProfile = { user?.id?.let(onOpenPublicProfile) },
+                onAdd = { showAddForm = true },
+            )
+        } else {
+            Row(
+                Modifier.fillMaxWidth().padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("LANDLORD", color = palette.primary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("Dashboard", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+                }
                 TextButton(onClick = onBack) { Text("Back") }
             }
         }
@@ -150,28 +158,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
             return@Column
         }
 
-        // Profile strip: the landlord's photo (shown on every listing) + public profile shortcut
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .clip(com.keja.app.ui.theme.KejaShapes.card)
-                .background(palette.card)
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Avatar(
-                url = avatarUrl, name = user?.name, size = 60.dp,
-                modifier = Modifier.clickable { avatarPicker.launch("image/*") },
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(user?.name ?: "Your profile", fontWeight = FontWeight.Bold, color = palette.text)
-                Text(avatarMsg ?: "Tap your photo to change it", fontSize = 11.sp, color = palette.muted)
-            }
-            KejaSecondaryButton(text = "View profile", onClick = { user?.id?.let(onOpenPublicProfile) })
-        }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
 
         stats?.let { s ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -180,15 +167,25 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
                 StatTile("Interested", s.interested_count.toString(), Modifier.weight(1f))
                 StatTile("Unlocks", s.contact_unlocks.toString(), Modifier.weight(1f))
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
         }
 
-        Text(
-            "My properties (${listings.size})",
-            modifier = Modifier.padding(horizontal = 20.dp),
-            fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = palette.text,
-        )
-        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "My properties",
+                fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = palette.text,
+            )
+            Box(
+                Modifier.clip(com.keja.app.ui.theme.KejaShapes.pill).background(palette.primaryLight).padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text("${listings.size}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = palette.primary)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
 
         LazyColumn(
             Modifier.weight(1f),
@@ -196,7 +193,15 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (listings.isEmpty()) {
-                item { Text("No listings yet — tap ＋ Add to publish your first property.", color = palette.muted) }
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        LandlordStatusCard(
+                            icon = Icons.Outlined.Home,
+                            title = "No listings yet",
+                            subtitle = "Tap ＋ Add up top to publish your first property.",
+                        )
+                    }
+                }
             }
             items(listings) { p ->
                 LandlordListingRow(
@@ -254,6 +259,74 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
             },
             dismissButton = { TextButton(onClick = { editingAmenities = null }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun LandlordHero(
+    name: String?,
+    avatarUrl: String?,
+    avatarMsg: String?,
+    onChangePhoto: () -> Unit,
+    onViewProfile: () -> Unit,
+    onAdd: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+            .clip(com.keja.app.ui.theme.KejaShapes.card)
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(LocalKejaPalette.current.primary, LocalKejaPalette.current.coral),
+                ),
+            )
+            .padding(20.dp),
+    ) {
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column {
+                    Text("LANDLORD", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("Dashboard", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
+                Box(
+                    Modifier
+                        .clip(com.keja.app.ui.theme.KejaShapes.pill)
+                        .background(Color.White)
+                        .clickable(onClick = onAdd)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Text("＋ Add", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = LocalKejaPalette.current.primary)
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(58.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.White.copy(alpha = 0.75f), CircleShape)
+                        .padding(2.dp)
+                        .clickable(onClick = onChangePhoto),
+                ) {
+                    Avatar(url = avatarUrl, name = name, size = 54.dp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(name ?: "Your profile", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 15.sp)
+                    Text(avatarMsg ?: "Tap your photo to change it", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f))
+                }
+                Box(
+                    Modifier
+                        .clip(com.keja.app.ui.theme.KejaShapes.pill)
+                        .background(Color.White.copy(alpha = 0.22f))
+                        .clickable(onClick = onViewProfile)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                ) {
+                    Text("View profile", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
     }
 }
 
@@ -332,15 +405,20 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
     }
     Column(
         modifier
+            .shadow(2.dp, com.keja.app.ui.theme.KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.1f))
             .clip(com.keja.app.ui.theme.KejaShapes.card)
             .background(palette.card)
             .padding(14.dp),
     ) {
-        Box(Modifier.size(30.dp).clip(CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = palette.primary, modifier = Modifier.size(15.dp))
+        Box(
+            Modifier.size(32.dp).clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(palette.primary, palette.coral))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
         }
-        Spacer(Modifier.height(8.dp))
-        Text(value, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+        Spacer(Modifier.height(10.dp))
+        Text(value, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
         Text(label, fontSize = 11.sp, color = palette.muted)
     }
 }
@@ -351,6 +429,7 @@ private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAm
     Column(
         Modifier
             .fillMaxWidth()
+            .shadow(3.dp, com.keja.app.ui.theme.KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.12f))
             .clip(com.keja.app.ui.theme.KejaShapes.card)
             .background(palette.card)
             .padding(12.dp),
@@ -365,14 +444,23 @@ private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAm
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(p.property_type, fontWeight = FontWeight.Bold, color = palette.text, fontSize = 15.sp)
-                Text(formatKes(p.price) + " / month", fontWeight = FontWeight.SemiBold, color = palette.primary, fontSize = 13.sp)
+                Text(
+                    formatKes(p.price) + (if (p.listing_type == "sale") " · for sale" else " / month"),
+                    fontWeight = FontWeight.SemiBold, color = palette.primary, fontSize = 13.sp,
+                )
                 Text(p.area ?: p.county, fontSize = 12.sp, color = palette.muted)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (p.is_booked) StatusPill("Booked", KejaColors.BookedBg, KejaColors.BookedText)
                     else StatusPill("Available", KejaColors.AvailableBg, KejaColors.AvailableText)
                     Text("👁 ${p.view_count}", fontSize = 11.sp, color = palette.muted)
                     Text("✦ ${p.amenities.size}", fontSize = 11.sp, color = palette.muted)
+                }
+                if ((p.agent_fee ?: 0.0) > 0.0) {
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.clip(com.keja.app.ui.theme.KejaShapes.pill).background(palette.primaryLight).padding(horizontal = 9.dp, vertical = 3.dp)) {
+                        Text("Agent fee ${formatKes(p.agent_fee!!)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = palette.primary)
+                    }
                 }
             }
         }
