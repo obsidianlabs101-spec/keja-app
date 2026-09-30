@@ -4,13 +4,23 @@ import uuid
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_current_user_optional, require_landlord
+from app.core.limiter import limiter
 from app.models.property import Property
-from app.schemas.property import LandlordPropertiesResponse, PropertyCreate, PropertyFilters, PropertyRead, PropertyUpdate
+from app.models.property_alert import PropertyAlert
+from app.schemas.property import (
+    LandlordPropertiesResponse,
+    PropertyAlertRead,
+    PropertyAlertRequest,
+    PropertyCreate,
+    PropertyFilters,
+    PropertyRead,
+    PropertyUpdate,
+)
 from app.services import property_service
 
 router = APIRouter(prefix="/properties", tags=["properties"])
@@ -192,3 +202,36 @@ def swipe(
 def unsave(property_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     property_service.remove_interested(db, current_user.id, property_id)
     return {"detail": "removed"}
+
+
+@router.get("/alerts/me", response_model=Optional[PropertyAlertRead])
+def get_my_alert(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """The renter's saved alert, if any — see the exit-intent dialog on Home."""
+    return db.query(PropertyAlert).filter(PropertyAlert.user_id == current_user.id).first()
+
+
+@router.put("/alerts/me", response_model=PropertyAlertRead)
+@limiter.limit("10/minute")
+def set_my_alert(
+    request: Request,
+    payload: PropertyAlertRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Replaces the renter's alert wholesale (there's only ever one)."""
+    alert = db.query(PropertyAlert).filter(PropertyAlert.user_id == current_user.id).first()
+    if alert is None:
+        alert = PropertyAlert(user_id=current_user.id)
+        db.add(alert)
+    for field, value in payload.model_dump().items():
+        setattr(alert, field, value)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
+@router.delete("/alerts/me")
+def clear_my_alert(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(PropertyAlert).filter(PropertyAlert.user_id == current_user.id).delete()
+    db.commit()
+    return {"detail": "cleared"}

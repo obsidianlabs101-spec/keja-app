@@ -24,6 +24,9 @@ class SessionStore(private val context: Context) {
     // AlertsSyncWorker never posts the same alert twice. Capped at 60 (see
     // markAlertsNotified) since we only need enough history to de-dupe.
     private val notifiedAlertIdsKey = stringSetPreferencesKey("notified_alert_ids")
+    // "Don't ask again" for the exit-intent dialog shown on the phone's back
+    // button from Home (see ExitIntentDialog in HomeScreen.kt).
+    private val skipExitPromptKey = booleanPreferencesKey("skip_exit_prompt")
     private val gson = Gson()
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[tokenKey] }
@@ -45,6 +48,12 @@ class SessionStore(private val context: Context) {
             val merged = (prefs[notifiedAlertIdsKey] ?: emptySet()) + ids
             prefs[notifiedAlertIdsKey] = if (merged.size > 60) merged.toList().takeLast(60).toSet() else merged
         }
+    }
+
+    suspend fun skipExitPrompt(): Boolean = context.dataStore.data.map { it[skipExitPromptKey] ?: false }.first()
+
+    suspend fun setSkipExitPrompt(value: Boolean) {
+        context.dataStore.edit { it[skipExitPromptKey] = value }
     }
 
     suspend fun setDarkOverride(value: Boolean?) {

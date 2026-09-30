@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProfileScreen(
     onRequireLogin: () -> Unit,
+    onSwitchAccount: () -> Unit = onRequireLogin,
     onOpenLandlordDashboard: () -> Unit,
     onOpenAdminDashboard: () -> Unit,
     onLoggedOut: () -> Unit,
@@ -263,9 +264,12 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Outlined.SwapHoriz,
                 title = "Switch account",
-                subtitle = "Log in as someone else without losing this session first",
+                subtitle = "Log out and sign in as someone else",
                 actionLabel = "Switch",
-                onClick = onRequireLogin,
+                onClick = {
+                    com.keja.app.data.notify.AlertsSync.cancel(context)
+                    scope.launch { repo.logout(); onSwitchAccount() }
+                },
             )
             Spacer(Modifier.height(10.dp))
             SettingRow(

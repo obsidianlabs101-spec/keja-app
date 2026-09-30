@@ -43,3 +43,39 @@ def notify_property_booked(db, prop, commit: bool = True):
         )
     if commit and rows:
         db.commit()
+
+
+def notify_matching_alerts(db, prop, commit: bool = True):
+    """Checks every renter's saved PropertyAlert (see models/property_alert.py)
+    against a newly created listing and notifies whoever matches. Runs right
+    after a property is created — see property_service.create_property."""
+    from app.models.property_alert import PropertyAlert
+    from app.models.user import User
+
+    alerts = db.query(PropertyAlert).all()
+    if not alerts:
+        return
+    landlord = prop.landlord
+    landlord_name = ((landlord.full_name or landlord.username or "") if landlord else "").lower()
+    haystack = f"{prop.area or ''} {prop.county or ''} {prop.proximity_note or ''}".lower()
+
+    for alert in alerts:
+        if alert.user_id == prop.landlord_id:
+            continue  # a landlord doesn't need alerts about their own new listing
+        if alert.location and alert.location.strip().lower() not in haystack:
+            continue
+        if alert.min_price is not None and prop.price < alert.min_price:
+            continue
+        if alert.max_price is not None and prop.price > alert.max_price:
+            continue
+        if alert.landlord_name and alert.landlord_name.strip().lower() not in landlord_name:
+            continue
+        notify(
+            db, alert.user_id, "alert_match",
+            f"New listing matching your alert: {prop.title}",
+            f"{prop.property_type} in {prop.area or prop.county} — {prop.price:.0f} KES.",
+            {"property_id": str(prop.id)},
+            commit=False,
+        )
+    if commit:
+        db.commit()

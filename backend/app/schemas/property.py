@@ -137,3 +137,20 @@ class LandlordPropertiesResponse(BaseModel):
     landlord: LandlordSummary
     properties: List[PropertyRead]
     property_count: int = 0  # everything this landlord has uploaded (not removed), incl. booked
+
+
+class PropertyAlertRequest(BaseModel):
+    location: Optional[str] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    landlord_name: Optional[str] = None
+
+
+class PropertyAlertRead(BaseModel):
+    location: Optional[str] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    landlord_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True

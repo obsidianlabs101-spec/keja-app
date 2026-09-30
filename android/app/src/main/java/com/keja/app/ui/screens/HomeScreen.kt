@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +54,54 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
     val palette = LocalKejaPalette.current
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
+    val sessionStore = remember { AppContainer.sessionStore(context) }
     val scope = rememberCoroutineScope()
+
+    // ---- Exit-intent flow (system back button from Home) ----
+    var skipExitPrompt by remember { mutableStateOf<Boolean?>(null) } // null = not loaded yet
+    var exitDialogShownThisSession by rememberSaveable { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showAlertPrefsDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { skipExitPrompt = runCatching { sessionStore.skipExitPrompt() }.getOrDefault(false) }
+
+    fun sayGoodbyeAndExit() {
+        val lines = listOf(
+            "Bye bye 👋 — your next home will still be here when you're back.",
+            "Off you go! We'll keep the lights on for your next visit.",
+            "See you soon — Keja will be right here waiting.",
+        )
+        android.widget.Toast.makeText(context, lines.random(), android.widget.Toast.LENGTH_SHORT).show()
+        (context as? android.app.Activity)?.finish()
+    }
+
+    androidx.activity.compose.BackHandler(enabled = skipExitPrompt == false) {
+        if (!exitDialogShownThisSession) {
+            exitDialogShownThisSession = true
+            showExitDialog = true
+        } else {
+            sayGoodbyeAndExit()
+        }
+    }
+
+    if (showExitDialog) {
+        ExitIntentDialog(
+            onDismiss = { dontAskAgain ->
+                showExitDialog = false
+                if (dontAskAgain) {
+                    skipExitPrompt = true
+                    scope.launch { sessionStore.setSkipExitPrompt(true) }
+                }
+            },
+            onAdjustNotifications = {
+                showExitDialog = false
+                showAlertPrefsDialog = true
+            },
+            onExitNow = { sayGoodbyeAndExit() },
+        )
+    }
+    if (showAlertPrefsDialog) {
+        AlertPreferencesDialog(onClose = { showAlertPrefsDialog = false })
+    }
 
     var query by remember { mutableStateOf("") }
     var properties by remember { mutableStateOf<List<Property>>(emptyList()) }
@@ -294,4 +342,110 @@ private fun CategorySquare(icon: ImageVector, label: String, active: Boolean, mo
         Spacer(Modifier.height(8.dp))
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) Color.White else palette.text, maxLines = 1)
     }
+}
+
+/** Shown on the phone's back button from Home, once per app session (unless
+ * "Don't ask again" was set previously). Offers to set up alerts instead of
+ * leaving; a second back-press (or tapping Exit here) says goodbye and closes
+ * the app for real. See sayGoodbyeAndExit() and the BackHandler above. */
+@Composable
+private fun ExitIntentDialog(
+    onDismiss: (dontAskAgain: Boolean) -> Unit,
+    onAdjustNotifications: () -> Unit,
+    onExitNow: () -> Unit,
+) {
+    var dontAskAgain by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = { onDismiss(dontAskAgain) },
+        title = { Text("Leaving already?") },
+        text = {
+            Column {
+                Text("Not able to find what you're looking for? Turn on alerts and we'll let you know the moment a new property matching your search arrives.")
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { dontAskAgain = !dontAskAgain }) {
+                    Checkbox(checked = dontAskAgain, onCheckedChange = { dontAskAgain = it })
+                    Spacer(Modifier.width(4.dp))
+                    Text("Don't ask me again", fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onAdjustNotifications) { Text("Adjust notifications") } },
+        dismissButton = { TextButton(onClick = onExitNow) { Text("Exit") } },
+    )
+}
+
+/** The "adjust notifications" dialog: location, price range, and an optional
+ * landlord name. Saved to /properties/alerts/me on the backend; a new
+ * property matching these filters notifies the renter (see
+ * notify_service.notify_matching_alerts). */
+@Composable
+private fun AlertPreferencesDialog(onClose: () -> Unit) {
+    val context = LocalContext.current
+    val repo = remember { AppContainer.repository(context) }
+    val scope = rememberCoroutineScope()
+
+    var location by remember { mutableStateOf("") }
+    var minPrice by remember { mutableStateOf("") }
+    var maxPrice by remember { mutableStateOf("") }
+    var landlordName by remember { mutableStateOf("") }
+    var loaded by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val existing = runCatching { repo.getMyAlert() }.getOrNull()
+        if (existing != null) {
+            location = existing.location ?: ""
+            minPrice = existing.min_price?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
+            maxPrice = existing.max_price?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
+            landlordName = existing.landlord_name ?: ""
+        }
+        loaded = true
+    }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Alert me about new properties") },
+        text = {
+            if (!loaded) {
+                Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader(size = 32.dp) }
+            } else {
+                Column {
+                    Text("Leave anything blank to match everything.", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(location, { location = it }, label = { Text("Location (area or county)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(minPrice, { minPrice = it.filter(Char::isDigit) }, label = { Text("Min price") }, singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(maxPrice, { maxPrice = it.filter(Char::isDigit) }, label = { Text("Max price") }, singleLine = true, modifier = Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(landlordName, { landlordName = it }, label = { Text("A certain landlord (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = loaded && !saving,
+                onClick = {
+                    saving = true
+                    scope.launch {
+                        runCatching {
+                            repo.setMyAlert(
+                                com.keja.app.data.model.PropertyAlertDto(
+                                    location = location.trim().ifBlank { null },
+                                    min_price = minPrice.toDoubleOrNull(),
+                                    max_price = maxPrice.toDoubleOrNull(),
+                                    landlord_name = landlordName.trim().ifBlank { null },
+                                )
+                            )
+                        }
+                        android.widget.Toast.makeText(context, "We'll alert you when a match comes up", android.widget.Toast.LENGTH_SHORT).show()
+                        saving = false
+                        onClose()
+                    }
+                },
+            ) { Text(if (saving) "Saving…" else "Save alert") }
+        },
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+    )
 }

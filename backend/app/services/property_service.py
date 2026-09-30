@@ -24,6 +24,8 @@ def create_property(db: Session, landlord_id: UUID, data: PropertyCreate) -> Pro
     db.add(prop)
     db.commit()
     db.refresh(prop)
+    from app.services.notify_service import notify_matching_alerts
+    notify_matching_alerts(db, prop)
     return prop
 
 

@@ -208,3 +208,10 @@ data class ReviewPropertyRequest(val action: String, val note: String? = null)
 data class ForceBookedRequest(val booked: Boolean)
 data class VerifyHostRequest(val approve: Boolean, val note: String? = null)
 data class RejectPaymentRequest(val reason: String? = null)
+
+data class PropertyAlertDto(
+    val location: String? = null,
+    val min_price: Double? = null,
+    val max_price: Double? = null,
+    val landlord_name: String? = null,
+)

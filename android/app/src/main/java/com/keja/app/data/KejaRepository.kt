@@ -144,4 +144,8 @@ class KejaRepository(private val sessionStore: SessionStore) {
     suspend fun adminPendingPayments() = unwrap(api.adminPendingPayments())
     suspend fun adminShowContact(id: String) { unwrap(api.adminShowContact(id)) }
     suspend fun adminRejectPayment(id: String, reason: String?) { unwrap(api.adminRejectPayment(id, RejectPaymentRequest(reason))) }
+
+    suspend fun getMyAlert(): PropertyAlertDto? = try { unwrap(api.getMyAlert()) } catch (e: Exception) { null }
+    suspend fun setMyAlert(alert: PropertyAlertDto): PropertyAlertDto = unwrap(api.setMyAlert(alert))
+    suspend fun clearMyAlert() { unwrap(api.clearMyAlert()) }
 }

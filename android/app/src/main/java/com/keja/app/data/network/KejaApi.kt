@@ -149,4 +149,13 @@ interface KejaApi {
 
     @POST("contact-unlock/admin/{id}/reject")
     suspend fun adminRejectPayment(@Path("id") id: String, @Body body: RejectPaymentRequest): Response<ResponseBody>
+
+    @GET("properties/alerts/me")
+    suspend fun getMyAlert(): Response<PropertyAlertDto?>
+
+    @PUT("properties/alerts/me")
+    suspend fun setMyAlert(@Body body: PropertyAlertDto): Response<PropertyAlertDto>
+
+    @DELETE("properties/alerts/me")
+    suspend fun clearMyAlert(): Response<ResponseBody>
 }

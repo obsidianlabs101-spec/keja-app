@@ -33,6 +33,7 @@ from app.models.property import Property  # noqa: F401
 from app.models.property_image import PropertyImage  # noqa: F401
 from app.models.ad_slot import AdSlot  # noqa: F401
 from app.models.landlord_id_document import LandlordIdDocument  # noqa: F401
+from app.models.property_alert import PropertyAlert  # noqa: F401
 from app.models.interested_property import InterestedProperty, PropertySwipe  # noqa: F401
 from app.models.contact_unlock import ContactUnlock, ContactUnlockPoolEntry  # noqa: F401
 

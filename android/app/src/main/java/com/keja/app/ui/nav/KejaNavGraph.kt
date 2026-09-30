@@ -113,7 +113,13 @@ fun KejaNavGraph(
             modifier = Modifier.padding(padding).imePadding(),
         ) {
             composable(ROUTE_AUTH) {
-                AuthScreen(onAuthenticated = { navController.popBackStack() })
+                AuthScreen(
+                    // Always land on a fresh Home instead of popping back —
+                    // popping back was how a leftover admin back stack (from
+                    // a "Switch account" done mid-session) used to bleed
+                    // into the new account's navigation.
+                    onAuthenticated = { navController.navigate(ROUTE_HOME) { popUpTo(0) } },
+                )
             }
             composable(ROUTE_HOME) {
                 HomeScreen(
@@ -147,6 +153,7 @@ fun KejaNavGraph(
             composable(ROUTE_PROFILE) {
                 ProfileScreen(
                     onRequireLogin = { navController.navigate(ROUTE_AUTH) },
+                    onSwitchAccount = { navController.navigate(ROUTE_AUTH) { popUpTo(0) } },
                     onOpenLandlordDashboard = { navController.navigate(ROUTE_LANDLORD_DASHBOARD) },
                     onOpenAdminDashboard = { navController.navigate(ROUTE_ADMIN_HOME) },
                     onLoggedOut = { navController.navigate(ROUTE_HOME) { popUpTo(0) } },
