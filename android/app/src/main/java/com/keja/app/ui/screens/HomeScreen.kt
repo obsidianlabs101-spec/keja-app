@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -354,24 +356,60 @@ private fun ExitIntentDialog(
     onAdjustNotifications: () -> Unit,
     onExitNow: () -> Unit,
 ) {
+    val palette = LocalKejaPalette.current
     var dontAskAgain by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = { onDismiss(dontAskAgain) },
-        title = { Text("Leaving already?") },
-        text = {
-            Column {
-                Text("Not able to find what you're looking for? Turn on alerts and we'll let you know the moment a new property matching your search arrives.")
-                Spacer(Modifier.height(14.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { dontAskAgain = !dontAskAgain }) {
-                    Checkbox(checked = dontAskAgain, onCheckedChange = { dontAskAgain = it })
-                    Spacer(Modifier.width(4.dp))
-                    Text("Don't ask me again", fontSize = 13.sp)
-                }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = { onDismiss(dontAskAgain) }) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .shadow(16.dp, KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.25f))
+                .clip(KejaShapes.card)
+                .background(palette.card)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(palette.primary, palette.coral))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.NotificationsActive, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
             }
-        },
-        confirmButton = { TextButton(onClick = onAdjustNotifications) { Text("Adjust notifications") } },
-        dismissButton = { TextButton(onClick = onExitNow) { Text("Exit") } },
-    )
+            Spacer(Modifier.height(18.dp))
+            Text("Leaving already?", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Not able to find what you're looking for? Turn on alerts and we'll let you know the moment a new property matching your search arrives.",
+                fontSize = 13.sp,
+                color = palette.muted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(KejaShapes.pill)
+                    .background(palette.bg)
+                    .clickable { dontAskAgain = !dontAskAgain }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Checkbox(checked = dontAskAgain, onCheckedChange = { dontAskAgain = it }, colors = CheckboxDefaults.colors(checkedColor = palette.primary))
+                Spacer(Modifier.width(4.dp))
+                Text("Don't ask me again", fontSize = 13.sp, color = palette.text)
+            }
+            Spacer(Modifier.height(20.dp))
+            KejaPrimaryButton(text = "Adjust notifications", onClick = onAdjustNotifications, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = onExitNow, modifier = Modifier.fillMaxWidth()) {
+                Text("Exit anyway", color = palette.muted, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
 }
 
 /** The "adjust notifications" dialog: location, price range, and an optional
