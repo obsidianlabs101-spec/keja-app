@@ -66,7 +66,7 @@ fun LandlordCommentsScreen(onBack: () -> Unit) {
             list == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
             else -> LazyColumn(
                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
                     Text("Comments", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
@@ -79,8 +79,9 @@ fun LandlordCommentsScreen(onBack: () -> Unit) {
                 }
                 if (list.isEmpty()) {
                     item {
+                        com.keja.app.ui.components.ThemedCard(Modifier.fillMaxWidth().padding(end = 6.dp, bottom = 7.dp)) {
                         Column(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(palette.card).padding(24.dp),
+                            Modifier.fillMaxWidth().padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text("No comments yet", fontWeight = FontWeight.Bold, color = palette.text)
@@ -90,12 +91,12 @@ fun LandlordCommentsScreen(onBack: () -> Unit) {
                                 fontSize = 12.sp, color = palette.muted,
                             )
                         }
+                        }
                     }
                 } else {
                     items(list, key = { it.id }) { c ->
-                        Column(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(palette.card).padding(14.dp),
-                        ) {
+                        com.keja.app.ui.components.ThemedCard(Modifier.fillMaxWidth().padding(end = 6.dp, bottom = 7.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Avatar(url = c.author_avatar, name = c.author_name, size = 34.dp)
                                 Spacer(Modifier.width(10.dp))
@@ -106,6 +107,7 @@ fun LandlordCommentsScreen(onBack: () -> Unit) {
                             }
                             Spacer(Modifier.height(8.dp))
                             Text(c.body, fontSize = 14.sp, color = palette.text, lineHeight = 20.sp)
+                        }
                         }
                     }
                 }

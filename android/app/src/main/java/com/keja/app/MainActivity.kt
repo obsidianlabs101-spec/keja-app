@@ -72,8 +72,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val themeStyle by sessionStore.themeStyleFlow.collectAsState(initial = KejaThemeStyle.PROFESSIONAL)
-            val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = null)
+            val themeStyle by sessionStore.themeStyleFlow.collectAsState(initial = KejaThemeStyle.RANGI)
+            val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = false)
 
             KejaTheme(themeStyle = themeStyle, darkOverride = darkOverride) {
                 KejaNavGraph(

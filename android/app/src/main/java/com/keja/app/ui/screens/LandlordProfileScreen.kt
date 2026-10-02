@@ -96,13 +96,11 @@ fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty
 @Composable
 private fun ProfileStat(label: String, value: String, modifier: Modifier = Modifier) {
     val palette = LocalKejaPalette.current
-    Column(
-        modifier.clip(RoundedCornerShape(16.dp)).background(palette.card).padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    com.keja.app.ui.components.ThemedCard(modifier = modifier.padding(end = 6.dp, bottom = 7.dp)) {
+    Column(Modifier.fillMaxWidth().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
         Text(label, fontSize = 11.sp, color = palette.muted)
-    }
+    }    }
 }
 
 /** "What renters say" — a public comment thread on the landlord's profile.

@@ -35,9 +35,9 @@ class SessionStore(private val context: Context) {
     }
 
     // null = follow the system's light/dark setting, same default as the website.
-    val darkOverrideFlow: Flow<Boolean?> = context.dataStore.data.map { it[darkOverrideKey] }
+    val darkOverrideFlow: Flow<Boolean?> = context.dataStore.data.map { it[darkOverrideKey] ?: false }
     val themeStyleFlow: Flow<KejaThemeStyle> = context.dataStore.data.map { prefs ->
-        if (prefs[themeStyleKey] == "rangi") KejaThemeStyle.RANGI else KejaThemeStyle.PROFESSIONAL
+        if (prefs[themeStyleKey] == "pro") KejaThemeStyle.PROFESSIONAL else KejaThemeStyle.RANGI
     }
 
     suspend fun notifiedAlertIds(): Set<String> = context.dataStore.data.map { it[notifiedAlertIdsKey] ?: emptySet() }.first()

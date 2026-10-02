@@ -64,7 +64,7 @@ fun ProfileScreen(
     val user by repo.currentUser.collectAsState()
 
     val currentStyle by sessionStore.themeStyleFlow.collectAsState(initial = KejaThemeStyle.PROFESSIONAL)
-    val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = null)
+    val darkOverride by sessionStore.darkOverrideFlow.collectAsState(initial = false)
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val isDarkNow = darkOverride ?: systemDark
 

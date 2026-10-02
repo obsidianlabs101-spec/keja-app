@@ -14,7 +14,7 @@ const modal = document.getElementById("modal");
 let currentView = localStorage.getItem("kejaView") || "home";
 let viewParams = {}; // extra data for views that need it (e.g. landlordProfile -> {landlordId})
 let dark = localStorage.getItem("kejaDark") === "1";
-let theme = localStorage.getItem("kejaTheme") || "pro";
+let theme = localStorage.getItem("kejaTheme") || "rangi";
 const THEMES = { pro: "Professional", rangi: "Rangi" };
 
 let token = localStorage.getItem("kejaToken") || "";

@@ -156,6 +156,7 @@ fun DiscoverScreen(
                 Row(
                     Modifier
                         .background(Color.Black.copy(alpha = 0.45f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+                        .border(if (com.keja.app.ui.theme.LocalKejaPalette.current.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI) 2.dp else 0.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -163,12 +164,12 @@ fun DiscoverScreen(
                         val active = listingFilter == key
                         Text(
                             label,
-                            color = if (active) Color.Black else Color.White,
+                            color = if (active) com.keja.app.ui.theme.LocalKejaPalette.current.text else Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
                                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-                                .background(if (active) Color.White else Color.Transparent)
+                                .background(if (active) com.keja.app.ui.theme.LocalKejaPalette.current.sun else Color.Transparent)
                                 .clickableSimple { listingFilter = if (active) null else key }
                                 .padding(horizontal = 18.dp, vertical = 8.dp),
                         )
@@ -280,8 +281,8 @@ private fun DiscoverFab(icon: androidx.compose.ui.graphics.vector.ImageVector, a
         Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(if (active) palette.primary else Color.Black.copy(alpha = 0.55f))
-            .border(1.dp, Color.White.copy(alpha = if (active) 0f else 0.15f), CircleShape)
+            .background(if (active) palette.coral else Color.Black.copy(alpha = 0.55f))
+            .border(2.dp, if (palette.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI) Color.White else Color.White.copy(alpha = if (active) 0f else 0.15f), CircleShape)
             .clickableSimple(onClick),
         contentAlignment = Alignment.Center,
     ) {

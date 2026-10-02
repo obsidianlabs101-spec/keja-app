@@ -415,13 +415,8 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
         "Interested" -> Icons.Outlined.FavoriteBorder
         else -> Icons.Outlined.LockOpen
     }
-    Column(
-        modifier
-            .shadow(2.dp, com.keja.app.ui.theme.KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.1f))
-            .clip(com.keja.app.ui.theme.KejaShapes.card)
-            .background(palette.card)
-            .padding(14.dp),
-    ) {
+    com.keja.app.ui.components.ThemedCard(modifier = modifier.padding(end = 6.dp, bottom = 7.dp)) {
+    Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Box(
             Modifier.size(32.dp).clip(CircleShape)
                 .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(palette.primary, palette.coral))),
@@ -432,20 +427,14 @@ private fun StatTile(label: String, value: String, modifier: Modifier = Modifier
         Spacer(Modifier.height(10.dp))
         Text(value, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
         Text(label, fontSize = 11.sp, color = palette.muted)
-    }
+    }    }
 }
 
 @Composable
 private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAmenities: () -> Unit, onDelete: () -> Unit) {
     val palette = LocalKejaPalette.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .shadow(3.dp, com.keja.app.ui.theme.KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.12f))
-            .clip(com.keja.app.ui.theme.KejaShapes.card)
-            .background(palette.card)
-            .padding(12.dp),
-    ) {
+    com.keja.app.ui.components.ThemedCard(modifier = Modifier.fillMaxWidth().padding(end = 6.dp, bottom = 7.dp)) {
+    Column(Modifier.fillMaxWidth().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             coil.compose.AsyncImage(
                 model = resolveMediaUrl(p.main_image_url),
@@ -496,7 +485,7 @@ private fun LandlordListingRow(p: Property, onToggleBooked: () -> Unit, onEditAm
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
         ) { Text("Delete", fontSize = 13.sp) }
-    }
+    }    }
 }
 
 @Composable
