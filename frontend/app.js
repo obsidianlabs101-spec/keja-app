@@ -49,7 +49,9 @@ async function api(path, options) {
   if (token) headers["Authorization"] = "Bearer " + token;
   if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
   const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
-  if (res.status === 401) {
+  // Only drop the session when a token we actually sent was rejected
+  // (bad login attempts return 401 too and must not wipe the UI).
+  if (res.status === 401 && token) {
     logout(true);
   }
   let data = null;
@@ -258,8 +260,7 @@ function discover() {
 
   app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
  ${listingPillsHtml(discoverListingType)}
- <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div>
- <div class="swipe-hint">Scroll up or down to browse the next property</div></section>`;
+ <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div></section>`;
 
   document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = discoverListingType === b.dataset.lt ? null : b.dataset.lt; discover(); });
   api("/properties/discover?limit=30" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
@@ -287,7 +288,7 @@ function discover() {
     bindDiscoverCards();
   }).catch(() => {
     const scroller = document.getElementById("discoverScroll");
-    if (scroller) scroller.outerHTML = `<div class="empty" style="width:100%"><h3>Couldn't load Discover</h3></div>`;
+    if (scroller) { scroller.outerHTML = `<div class="empty" style="width:100%"><h3>Couldn't load Discover</h3><button class="primary" id="discRetry" style="margin-top:14px">Retry</button></div>`; const r = document.getElementById("discRetry"); if (r) r.onclick = () => discover(); }
   });
 }
 

@@ -2,7 +2,6 @@ from fastapi import FastAPI
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.admin import router as admin_router
-from app.api.v1.admin_extra import router as admin_extra_router
 
 from app.api.v1.users import router as user_router
 from app.api.v1.properties import router as property_router
@@ -141,7 +140,6 @@ if os.path.isdir("frontend"):
 
 app.include_router(auth_router)
 app.include_router(admin_router)
-app.include_router(admin_extra_router)
 app.include_router(user_router)
 app.include_router(property_router)
 app.include_router(contact_unlock_router)

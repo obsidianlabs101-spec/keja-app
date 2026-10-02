@@ -10,6 +10,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -51,10 +53,22 @@ fun DiscoverScreen(
     var uiHidden by remember { mutableStateOf(false) }
     var listingFilter by remember { mutableStateOf<String?>(null) } // "rent" | "sale" | null (both)
 
-    LaunchedEffect(isLoggedIn) {
+    var loadError by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableStateOf(0) }
+
+    LaunchedEffect(isLoggedIn, reloadKey) {
         if (isLoggedIn) {
             loading = true
-            properties = runCatching { repo.discover(limit = 30) }.getOrDefault(emptyList())
+            loadError = false
+            // Don't swallow failures into an empty list — that made a slow/failed
+            // request look like "You've seen everything". Retry once (Render can be
+            // cold-starting), then show a real error with a Retry button.
+            var result = runCatching { repo.discover(limit = 30) }
+            if (result.isFailure) {
+                kotlinx.coroutines.delay(1500)
+                result = runCatching { repo.discover(limit = 30) }
+            }
+            result.onSuccess { properties = it }.onFailure { loadError = true }
             loading = false
         }
     }
@@ -74,6 +88,19 @@ fun DiscoverScreen(
 
     if (loading) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
+        return
+    }
+
+    if (loadError && properties.isEmpty()) {
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            DiscoverStateCard(
+                icon = Icons.Filled.Search,
+                title = "Couldn't load Discover",
+                subtitle = "Check your connection and try again.",
+                actionLabel = "Retry",
+                onAction = { reloadKey++ },
+            )
+        }
         return
     }
 
@@ -102,25 +129,35 @@ fun DiscoverScreen(
             }
         } else {
             androidx.compose.runtime.key(listingFilter) {
-                val pagerState = rememberPagerState(pageCount = { shown.size })
-                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                    val property = shown[page]
-                    val isSaved = interestedIds.contains(property.id)
-
-                    DiscoverCard(
-                        property = property,
-                        isSaved = isSaved,
-                        uiHidden = uiHidden,
-                        onTap = { onOpenProperty(property.id) },
-                        onLandlordClick = { onOpenLandlord(property.landlord_id) },
-                        onInterestedClick = {
-                            scope.launch {
-                                runCatching { repo.swipe(property.id, "right") }
-                                interestedIds = interestedIds + property.id
-                            }
-                        },
-                        onHideToggle = { uiHidden = !uiHidden },
-                    )
+                // Free-scrolling feed (no snap / no forced jump to the next property).
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(shown, key = { it.id }) { property ->
+                        val isSaved = interestedIds.contains(property.id)
+                        Box(
+                            Modifier
+                                .fillParentMaxHeight(0.86f)
+                                .fillMaxWidth()
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                        ) {
+                            DiscoverCard(
+                                property = property,
+                                isSaved = isSaved,
+                                uiHidden = uiHidden,
+                                onTap = { onOpenProperty(property.id) },
+                                onLandlordClick = { onOpenLandlord(property.landlord_id) },
+                                onInterestedClick = {
+                                    scope.launch {
+                                        runCatching { repo.swipe(property.id, "right") }
+                                        interestedIds = interestedIds + property.id
+                                    }
+                                },
+                                onHideToggle = { uiHidden = !uiHidden },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -148,15 +185,6 @@ fun DiscoverScreen(
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Scroll up or down to browse the next property",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 11.sp,
-                    modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.35f), androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
             }
         }
     }

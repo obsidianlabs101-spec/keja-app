@@ -246,17 +246,17 @@ body.dark .hero{overflow:hidden}
   box-sizing:border-box;
 }
 .discover-page .section-head{flex:none;margin-bottom:10px}
-.discover-page .swipe-hint{flex:none;margin-top:10px}
+.discover-page .swipe-hint{display:none}
 .discover-page .ad{flex:none;margin-top:8px;margin-bottom:0;min-height:40px;font-size:10.5px}
 .discover-scroll.vertical{
   flex:1 1 auto;min-height:0; /* min-height:0 lets a flex child actually shrink+scroll instead of growing to fit its content */
   display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;
-  scroll-snap-type:y mandatory;touch-action:pan-x pan-y;overscroll-behavior-y:contain;
+  touch-action:pan-x pan-y;overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;gap:16px;padding:5px 2px 18px;
 }
 .discover-scroll.vertical .swipe-card{
-  min-width:100%;width:100%;height:100%;min-height:0;flex:none;
-  scroll-snap-align:start;scroll-snap-stop:always;touch-action:pan-x pan-y;
+  min-width:100%;width:100%;height:86%;min-height:0;flex:none;
+  touch-action:pan-x pan-y;
 }
 .swipe-gallery{
   position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;

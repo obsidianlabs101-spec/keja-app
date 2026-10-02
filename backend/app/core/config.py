@@ -34,9 +34,15 @@ class Settings:
     # --- Core auth secret -------------------------------------------------
     SECRET_KEY = _require_secret("SECRET_KEY")
     ALGORITHM = os.getenv("ALGORITHM", "HS256")
-    # 30 minutes (the old default) is far too short for a "close the app,
-    ACCESS_TOKEN_EXPIRE_MINUTES = int(
-        os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 30)
+    # Sessions should effectively never expire on their own: people stay
+    # logged in until they log out / switch account. A leftover
+    # ACCESS_TOKEN_EXPIRE_MINUTES env var on the host (e.g. the old 30-minute
+    # default) used to silently override this and log users out, so the env
+    # value can only EXTEND the lifetime, never shorten it below one year.
+    # Remote revocation still works via token_version (logout-all-sessions).
+    ACCESS_TOKEN_EXPIRE_MINUTES = max(
+        int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 0) or 0),
+        60 * 24 * 365,
     )
 
     # --- Dedicated QR-signing secret ---------------------------------------
