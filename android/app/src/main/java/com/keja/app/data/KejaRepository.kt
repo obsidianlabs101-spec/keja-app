@@ -148,4 +148,8 @@ class KejaRepository(private val sessionStore: SessionStore) {
     suspend fun getMyAlert(): PropertyAlertDto? = try { unwrap(api.getMyAlert()) } catch (e: Exception) { null }
     suspend fun setMyAlert(alert: PropertyAlertDto): PropertyAlertDto = unwrap(api.setMyAlert(alert))
     suspend fun clearMyAlert() { unwrap(api.clearMyAlert()) }
+
+    suspend fun hostComments(landlordId: String) = unwrap(api.hostComments(landlordId))
+    suspend fun setHostComment(landlordId: String, body: String) = unwrap(api.setHostComment(landlordId, HostCommentCreateRequest(body)))
+    suspend fun deleteHostComment(landlordId: String) { unwrap(api.deleteHostComment(landlordId)) }
 }

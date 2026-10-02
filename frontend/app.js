@@ -357,7 +357,7 @@ function landlordProfile() {
   const landlordId = viewParams.landlordId;
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">LANDLORD</div><h2 id="landlordName">Loading…</h2></div><button class="chip" id="backBtn">Back</button></div>
  <div id="landlordMeta"></div>
- <div class="host-comments"><strong>What renters say</strong><div class="muted" style="font-size:12px">Comments about this host</div><p class="muted" style="margin:10px 0 0">No comments yet. Renter comments about this host are coming soon.</p><button class="chip" disabled style="margin-top:10px;opacity:.6">Write a comment (coming soon)</button></div>
+ <div class="host-comments"><strong>What renters say</strong><div class="muted" style="font-size:12px">Comments about this host</div><div id="hostCommentsBody" style="margin-top:10px">${loaderHtml()}</div></div>
  <div class="grid" id="landlordGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backBtn").onclick = () => goto("discover");
   if (!landlordId) return;
@@ -371,6 +371,38 @@ function landlordProfile() {
     grid.innerHTML = data.properties.length ? data.properties.map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>No other listings from this landlord yet</h3></div>`;
     bindCards();
   }).catch(() => toast("Couldn't load this landlord's properties"));
+  loadHostComments(landlordId);
+}
+
+function loadHostComments(landlordId) {
+  const body = document.getElementById("hostCommentsBody");
+  if (!body) return;
+  api(`/properties/landlord/${landlordId}/comments`).then(list => {
+    if (!document.getElementById("hostCommentsBody")) return; // navigated away
+    const mine = list.find(c => c.is_mine);
+    const others = list.filter(c => !c.is_mine);
+    const commentRow = c => `<div class="host-comment"><div class="hc-top">${avatarHtml(c.author_avatar, c.author_name, 28)}<strong>${escHtml(c.author_name)}</strong><span class="muted" style="font-size:11px">${timeAgo(c.created_at)}</span></div><p>${escHtml(c.body)}</p></div>`;
+    const canWrite = isLoggedIn() && currentUser && currentUser.id !== landlordId;
+    body.innerHTML = `
+      ${others.length ? others.map(commentRow).join("") : `<p class="muted" style="font-size:13px">No comments yet. Be the first to share how renting from this landlord went.</p>`}
+      ${canWrite ? `<div class="host-comment-form"><textarea id="hcInput" rows="2" maxlength="500" placeholder="Share how renting from this landlord went…">${mine ? escHtml(mine.body) : ""}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px"><button class="primary" id="hcSave">${mine ? "Update comment" : "Post comment"}</button>${mine ? `<button class="chip danger" id="hcDelete">Delete</button>` : ""}</div></div>`
+        : (isLoggedIn() ? "" : `<p class="muted" style="font-size:12px;margin-top:8px">Log in to leave a comment.</p>`)}
+    `;
+    if (canWrite) {
+      document.getElementById("hcSave").onclick = () => {
+        const text = document.getElementById("hcInput").value.trim();
+        if (!text) { toast("Write something first"); return; }
+        api(`/properties/landlord/${landlordId}/comments/me`, { method: "PUT", body: JSON.stringify({ body: text }) })
+          .then(() => { toast("Comment posted"); loadHostComments(landlordId); })
+          .catch(e => toast(e.message || "Couldn't post comment"));
+      };
+      const delBtn = document.getElementById("hcDelete");
+      if (delBtn) delBtn.onclick = () => api(`/properties/landlord/${landlordId}/comments/me`, { method: "DELETE" })
+        .then(() => { toast("Comment deleted"); loadHostComments(landlordId); })
+        .catch(e => toast(e.message || "Couldn't delete comment"));
+    }
+  }).catch(() => { if (body) body.innerHTML = `<p class="muted" style="font-size:13px">Couldn't load comments.</p>`; });
 }
 
 /* ---------------- Profile ---------------- */

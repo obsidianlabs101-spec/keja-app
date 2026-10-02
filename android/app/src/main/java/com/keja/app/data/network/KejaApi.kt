@@ -158,4 +158,13 @@ interface KejaApi {
 
     @DELETE("properties/alerts/me")
     suspend fun clearMyAlert(): Response<ResponseBody>
+
+    @GET("properties/landlord/{id}/comments")
+    suspend fun hostComments(@Path("id") id: String): Response<List<HostCommentDto>>
+
+    @PUT("properties/landlord/{id}/comments/me")
+    suspend fun setHostComment(@Path("id") id: String, @Body body: HostCommentCreateRequest): Response<HostCommentDto>
+
+    @DELETE("properties/landlord/{id}/comments/me")
+    suspend fun deleteHostComment(@Path("id") id: String): Response<ResponseBody>
 }

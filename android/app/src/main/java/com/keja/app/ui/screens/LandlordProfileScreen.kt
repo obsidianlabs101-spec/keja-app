@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,8 +21,11 @@ import androidx.compose.ui.unit.sp
 import com.keja.app.data.AppContainer
 import com.keja.app.data.model.LandlordPropertiesResponse
 import com.keja.app.ui.components.Avatar
+import com.keja.app.ui.components.KejaPrimaryButton
 import com.keja.app.ui.components.PropertyCard
+import com.keja.app.ui.components.relativeTime
 import com.keja.app.ui.theme.LocalKejaPalette
+import kotlinx.coroutines.launch
 
 @Composable
 fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty: (String) -> Unit) {
@@ -74,7 +78,7 @@ fun LandlordProfileScreen(landlordId: String, onBack: () -> Unit, onOpenProperty
                             ProfileStat("Available now", d.properties.size.toString(), Modifier.weight(1f))
                         }
                         Spacer(Modifier.height(14.dp))
-                        HostCommentsPlaceholder()
+                        HostCommentsSection(landlordId = landlordId)
                         Spacer(Modifier.height(14.dp))
                         Text(
                             if (d.properties.isEmpty()) "No available listings right now" else "Available listings",
@@ -101,11 +105,33 @@ private fun ProfileStat(label: String, value: String, modifier: Modifier = Modif
     }
 }
 
-/** Placeholder only — comments about a host aren't built yet. Keeps the
- * spot (and the layout) ready so the real feature can drop in later. */
+/** "What renters say" — a public comment thread on the landlord's profile.
+ * One comment per renter per landlord; posting again edits it in place
+ * (see /properties/landlord/{id}/comments on the backend). */
 @Composable
-private fun HostCommentsPlaceholder() {
+private fun HostCommentsSection(landlordId: String) {
     val palette = LocalKejaPalette.current
+    val context = LocalContext.current
+    val repo = remember { AppContainer.repository(context) }
+    val scope = rememberCoroutineScope()
+    val currentUser by repo.currentUser.collectAsState()
+
+    var comments by remember { mutableStateOf<List<com.keja.app.data.model.HostCommentDto>?>(null) }
+    var draft by remember { mutableStateOf("") }
+    var posting by remember { mutableStateOf(false) }
+
+    fun load() {
+        scope.launch {
+            comments = runCatching { repo.hostComments(landlordId) }.getOrNull()
+            comments?.find { it.is_mine }?.let { draft = it.body }
+        }
+    }
+    LaunchedEffect(landlordId) { load() }
+
+    val canWrite = currentUser != null && currentUser?.id != landlordId
+    val mine = comments?.find { it.is_mine }
+    val others = comments?.filterNot { it.is_mine } ?: emptyList()
+
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(palette.card).padding(16.dp),
     ) {
@@ -120,8 +146,66 @@ private fun HostCommentsPlaceholder() {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Text("No comments yet. Renter comments about this host are coming soon.", fontSize = 13.sp, color = palette.muted)
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Write a comment (coming soon)") }
+
+        when {
+            comments == null -> com.keja.app.ui.components.KejaLoader(size = 28.dp)
+            others.isEmpty() -> Text("No comments yet. Be the first to share how renting from this landlord went.", fontSize = 13.sp, color = palette.muted)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                others.forEach { c ->
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(url = c.author_avatar, name = c.author_name, size = 26.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(c.author_name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = palette.text)
+                            Spacer(Modifier.width(6.dp))
+                            Text(relativeTime(c.created_at), fontSize = 11.sp, color = palette.muted)
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(c.body, fontSize = 13.sp, color = palette.text)
+                    }
+                }
+            }
+        }
+
+        if (canWrite) {
+            Spacer(Modifier.height(14.dp))
+            HorizontalDivider(color = palette.border)
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { if (it.length <= 500) draft = it },
+                placeholder = { Text("Share how renting from this landlord went…") },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                KejaPrimaryButton(
+                    text = if (posting) "Saving…" else if (mine != null) "Update comment" else "Post comment",
+                    enabled = !posting && draft.isNotBlank(),
+                    onClick = {
+                        posting = true
+                        scope.launch {
+                            runCatching { repo.setHostComment(landlordId, draft.trim()) }
+                                .onFailure { android.widget.Toast.makeText(context, it.message ?: "Couldn't post comment", android.widget.Toast.LENGTH_SHORT).show() }
+                            posting = false
+                            load()
+                        }
+                    },
+                )
+                if (mine != null) {
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            runCatching { repo.deleteHostComment(landlordId) }
+                            draft = ""
+                            load()
+                        }
+                    }) { Text("Delete", color = Color(0xFFEF4444)) }
+                }
+            }
+        } else if (currentUser == null) {
+            Spacer(Modifier.height(10.dp))
+            Text("Log in to leave a comment.", fontSize = 12.sp, color = palette.muted)
+        }
     }
 }

@@ -215,3 +215,13 @@ data class PropertyAlertDto(
     val max_price: Double? = null,
     val landlord_name: String? = null,
 )
+
+data class HostCommentDto(
+    val id: String,
+    val body: String,
+    val created_at: String? = null,
+    val author_name: String,
+    val author_avatar: String? = null,
+    val is_mine: Boolean = false,
+)
+data class HostCommentCreateRequest(val body: String)

@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_current_user_optional, require_landlord
 from app.core.limiter import limiter
+from app.models.host_comment import HostComment
 from app.models.property import Property
 from app.models.property_alert import PropertyAlert
+from app.models.user import User
+from app.schemas.host_comment import HostCommentCreate, HostCommentRead
 from app.schemas.property import (
     LandlordPropertiesResponse,
     PropertyAlertRead,
@@ -235,3 +238,77 @@ def clear_my_alert(current_user=Depends(get_current_user), db: Session = Depends
     db.query(PropertyAlert).filter(PropertyAlert.user_id == current_user.id).delete()
     db.commit()
     return {"detail": "cleared"}
+
+
+@router.get("/landlord/{landlord_id}/comments", response_model=List[HostCommentRead])
+def list_host_comments(
+    landlord_id: UUID,
+    current_user=Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    """Public: what renters say about this landlord."""
+    rows = (
+        db.query(HostComment)
+        .filter(HostComment.landlord_id == landlord_id)
+        .order_by(HostComment.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    out = []
+    for c in rows:
+        author = db.query(User).filter(User.id == c.user_id).first()
+        out.append(
+            HostCommentRead(
+                id=c.id,
+                body=c.body,
+                created_at=c.created_at,
+                author_name=(author.full_name or author.username or "A renter") if author else "A renter",
+                author_avatar=author.profile_pic_url if author else None,
+                is_mine=bool(current_user and current_user.id == c.user_id),
+            )
+        )
+    return out
+
+
+@router.put("/landlord/{landlord_id}/comments/me", response_model=HostCommentRead)
+@limiter.limit("5/minute")
+def set_my_host_comment(
+    request: Request,
+    landlord_id: UUID,
+    payload: HostCommentCreate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Posting again replaces your previous comment on this landlord — one
+    comment per renter per host, same pattern as the property alert."""
+    if landlord_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You can't comment on your own profile")
+    comment = (
+        db.query(HostComment)
+        .filter(HostComment.landlord_id == landlord_id, HostComment.user_id == current_user.id)
+        .first()
+    )
+    if comment is None:
+        comment = HostComment(landlord_id=landlord_id, user_id=current_user.id, body=payload.body)
+        db.add(comment)
+    else:
+        comment.body = payload.body
+    db.commit()
+    db.refresh(comment)
+    return HostCommentRead(
+        id=comment.id,
+        body=comment.body,
+        created_at=comment.created_at,
+        author_name=current_user.full_name or current_user.username or "You",
+        author_avatar=current_user.profile_pic_url,
+        is_mine=True,
+    )
+
+
+@router.delete("/landlord/{landlord_id}/comments/me")
+def delete_my_host_comment(landlord_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    db.query(HostComment).filter(
+        HostComment.landlord_id == landlord_id, HostComment.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"detail": "deleted"}

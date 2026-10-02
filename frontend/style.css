@@ -404,3 +404,9 @@ body.kb-open .bottom-nav{display:none}
 .lt-pill.active{background:var(--primary);color:#fff;border-color:transparent}
 .agent-fee{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-size:12px;font-weight:800}
 .host-comments{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin:14px 0}
+.host-comment{padding:10px 0;border-top:1px solid var(--border)}
+.host-comment:first-child{border-top:none}
+.hc-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.host-comment p{margin:0;font-size:13px;color:var(--text)}
+.host-comment-form{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.host-comment-form textarea{width:100%;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:10px;font:inherit;resize:vertical}
