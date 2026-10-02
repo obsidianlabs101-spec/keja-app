@@ -58,13 +58,7 @@ fun AdminDashboardScreen(onBack: () -> Unit) {
                 cells.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { (label, value) ->
-                            Column(
-                                Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(palette.card)
-                                    .padding(14.dp),
-                            ) {
+                            com.keja.app.ui.components.KejaSurface(Modifier.weight(1f)) {
                                 Text(label, fontSize = 11.sp, color = palette.muted)
                                 Text(value, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
                             }

@@ -98,12 +98,9 @@ private fun SavedPlacesEmptyState(
     onAction: (() -> Unit)? = null,
 ) {
     val palette = LocalKejaPalette.current
-    Column(
-        Modifier
-            .fillMaxWidth(0.86f)
-            .clip(KejaShapes.card)
-            .background(palette.card)
-            .padding(vertical = 36.dp, horizontal = 22.dp),
+    com.keja.app.ui.components.KejaSurface(
+        Modifier.fillMaxWidth(0.86f),
+        contentPadding = PaddingValues(vertical = 36.dp, horizontal = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(

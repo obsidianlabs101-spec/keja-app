@@ -130,9 +130,7 @@ private fun HostCommentsSection(landlordId: String) {
     val mine = comments?.find { it.is_mine }
     val others = comments?.filterNot { it.is_mine } ?: emptyList()
 
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(palette.card).padding(16.dp),
-    ) {
+    com.keja.app.ui.components.KejaSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(36.dp).clip(CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = palette.primary, modifier = Modifier.size(18.dp))

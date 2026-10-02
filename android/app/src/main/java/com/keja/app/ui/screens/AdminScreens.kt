@@ -62,13 +62,10 @@ fun AdminOverviewScreen(onOpen: (String) -> Unit) {
             tiles.chunked(2).forEach { row ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { (label, count, route) ->
-                        Column(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(palette.card)
-                                .clickable { onOpen(route) }
-                                .padding(16.dp),
+                        com.keja.app.ui.components.KejaSurface(
+                            Modifier.weight(1f),
+                            contentPadding = PaddingValues(16.dp),
+                            onClick = { onOpen(route) },
                         ) {
                             Text(label, color = palette.muted, fontSize = 12.sp)
                             Text("$count", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)

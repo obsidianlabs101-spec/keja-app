@@ -122,14 +122,7 @@ fun AuthScreen(onAuthenticated: () -> Unit) {
             // A card that overlaps the gradient slightly, so the form reads
             // as one deliberate surface rather than starting flush at the
             // banner's edge.
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .shadow(10.dp, KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.18f))
-                    .clip(KejaShapes.card)
-                    .background(palette.card)
-                    .padding(20.dp),
-            ) {
+            com.keja.app.ui.components.KejaSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(20.dp)) {
                 Row(
                     Modifier
                         .fillMaxWidth()

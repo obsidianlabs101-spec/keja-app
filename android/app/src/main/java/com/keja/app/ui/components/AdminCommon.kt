@@ -75,13 +75,8 @@ fun AdminPage(eyebrow: String, title: String, subtitle: String, content: @Compos
 @Composable
 fun CardShell(content: @Composable ColumnScope.() -> Unit) {
     val palette = LocalKejaPalette.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(palette.card)
-            .padding(14.dp),
+    KejaSurface(
+        Modifier.fillMaxWidth().padding(bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         content = content,
     )

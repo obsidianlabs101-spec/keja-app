@@ -256,12 +256,9 @@ private fun EmptyHomeState(commercial: Boolean, forSale: Boolean = false) {
         forSale -> "Landlords haven't listed any properties for sale in this category yet."
         else -> "Be the first to list a property, or check back soon."
     }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(KejaShapes.card)
-            .background(palette.card)
-            .padding(vertical = 36.dp, horizontal = 20.dp),
+    com.keja.app.ui.components.KejaSurface(
+        Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(vertical = 36.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(56.dp).clip(CircleShape).background(palette.primaryLight), contentAlignment = Alignment.Center) {

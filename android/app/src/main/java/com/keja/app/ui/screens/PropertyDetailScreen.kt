@@ -385,13 +385,7 @@ private fun MpesaPayCard(
 
     Column {
         TextButton(onClick = onBack) { Text("Back") }
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(palette.card)
-                .padding(16.dp),
-        ) {
+        com.keja.app.ui.components.KejaSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
             Text("Pay KES $MPESA_AMOUNT via M-Pesa", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
             Text("One-time payment to unlock this landlord's contact.", fontSize = 12.sp, color = palette.muted)
             Spacer(Modifier.height(14.dp))

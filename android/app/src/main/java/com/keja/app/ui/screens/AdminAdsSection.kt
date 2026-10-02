@@ -113,13 +113,7 @@ private fun AdPlacementEditor(
         if (uri != null) picked = uri
     }
 
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(palette.card)
-            .padding(14.dp),
-    ) {
+    com.keja.app.ui.components.KejaSurface(Modifier.fillMaxWidth()) {
         Text(label, fontWeight = FontWeight.Bold, color = palette.text)
         Text(hint, fontSize = 11.sp, color = palette.muted)
         Spacer(Modifier.height(8.dp))

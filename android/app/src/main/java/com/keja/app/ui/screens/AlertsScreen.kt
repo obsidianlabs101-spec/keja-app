@@ -67,17 +67,9 @@ fun AlertsScreen(isLoggedIn: Boolean, onRequireLogin: () -> Unit, onOpenProperty
                 else -> list.forEach { n ->
                     val phone = n.dataString("phone")
                     val propertyId = n.dataString("property_id")
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 10.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(palette.card)
-                            .border(if (n.read) 0.dp else 1.5.dp, if (n.read) androidx.compose.ui.graphics.Color.Transparent else palette.primary, RoundedCornerShape(14.dp))
-                            .padding(14.dp),
-                    ) {
+                    com.keja.app.ui.components.KejaSurface(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(n.title, fontWeight = FontWeight.Bold, color = palette.text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                            Text((if (n.read) "" else "● ") + n.title, fontWeight = FontWeight.Bold, color = palette.text, fontSize = 14.sp, modifier = Modifier.weight(1f))
                             Text(relativeTime(n.created_at), color = palette.muted, fontSize = 11.sp)
                         }
                         n.body?.let { Text(it, color = palette.text, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }

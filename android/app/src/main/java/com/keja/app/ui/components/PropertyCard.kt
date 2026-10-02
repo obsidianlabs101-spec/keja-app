@@ -79,6 +79,33 @@ fun ThemedCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, con
     }
 }
 
+/**
+ * A padded Column inside the theme's card chrome (ThemedCard). Drop-in
+ * replacement for `Column(Modifier.clip(..).background(palette.card).padding(..))`
+ * so every screen gets Rangi's bold outline + hard offset shadow in
+ * Rangi, and the plain bordered card in Professional. The extra end/bottom
+ * padding in Rangi leaves room for the offset shadow so it isn't clipped.
+ */
+@Composable
+fun KejaSurface(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(14.dp),
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val rangi = LocalKejaPalette.current.style == KejaThemeStyle.RANGI
+    ThemedCard(modifier = if (rangi) modifier.padding(end = 6.dp, bottom = 7.dp) else modifier, onClick = onClick) {
+        Column(
+            Modifier.fillMaxWidth().padding(contentPadding),
+            horizontalAlignment = horizontalAlignment,
+            verticalArrangement = verticalArrangement,
+            content = content,
+        )
+    }
+}
+
 @Composable
 fun PropertyCard(property: Property, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val palette = LocalKejaPalette.current
