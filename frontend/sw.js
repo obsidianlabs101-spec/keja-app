@@ -1,4 +1,4 @@
-const CACHE_NAME = "keja-cache-v11";
+const CACHE_NAME = "keja-cache-v12";
 
 // This is a single-page app — index.html, style.css and app.js ARE the
 // entire site. Each asset is fetched and cached individually rather than
@@ -57,6 +57,24 @@ self.addEventListener("fetch", (event) => {
   // them at all. Everything else cross-origin (API calls) still always
   // goes straight to the network.
   if (!sameOrigin && !isImage) return;
+
+  // App shell (html/js/css/etc.): network-first, so a new deploy shows up on
+  // the very next load instead of one visit later. Falls back to the cache
+  // only when offline. Images stay cache-first (they never change per URL).
+  if (!isImage) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
