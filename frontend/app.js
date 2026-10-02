@@ -263,7 +263,7 @@ function discover() {
  <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div></section>`;
 
   document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = discoverListingType === b.dataset.lt ? null : b.dataset.lt; discover(); });
-  api("/properties/discover?limit=30" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
+  api("/properties/discover?limit=50" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
     discoverQueue = list;
     const scroller = document.getElementById("discoverScroll");
     if (!scroller) return;

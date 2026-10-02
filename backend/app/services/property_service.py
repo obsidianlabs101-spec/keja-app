@@ -2,7 +2,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.property import Property
@@ -161,19 +161,13 @@ def search_properties(db: Session, filters: PropertyFilters, limit: int = 50, of
 
 
 def discover_queue(db: Session, user_id: UUID, filters: PropertyFilters, limit: int = 20) -> List[Property]:
-    """Properties the user hasn't swiped on yet, newest first — the
+    """Every available listing (not the user's own), in random order — the
     Tinder-style Discover deck."""
-    already_swiped_ids = [
-        row[0] for row in db.query(PropertySwipe.property_id).filter(PropertySwipe.user_id == user_id).all()
-    ]
-
     query = (
         _base_query(db)
         .filter(Property.is_available == True)  # noqa: E712
         .filter(Property.landlord_id != user_id)
     )
-    if already_swiped_ids:
-        query = query.filter(~Property.id.in_(already_swiped_ids))
 
     if filters.county:
         query = query.filter(Property.county.ilike(filters.county))
@@ -190,7 +184,7 @@ def discover_queue(db: Session, user_id: UUID, filters: PropertyFilters, limit: 
     if filters.listing_type:
         query = query.filter(Property.listing_type == filters.listing_type)
 
-    return query.order_by(Property.created_at.desc()).limit(limit).all()
+    return query.order_by(func.random()).limit(limit).all()
 
 
 def record_swipe(db: Session, user_id: UUID, property_id: UUID, direction: str) -> None:

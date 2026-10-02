@@ -10,8 +10,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -63,12 +61,13 @@ fun DiscoverScreen(
             // Don't swallow failures into an empty list — that made a slow/failed
             // request look like "You've seen everything". Retry once (Render can be
             // cold-starting), then show a real error with a Retry button.
-            var result = runCatching { repo.discover(limit = 30) }
+            var result = runCatching { repo.discover(limit = 50) }
             if (result.isFailure) {
                 kotlinx.coroutines.delay(1500)
-                result = runCatching { repo.discover(limit = 30) }
+                result = runCatching { repo.discover(limit = 50) }
             }
             result.onSuccess { properties = it }.onFailure { loadError = true }
+            runCatching { repo.interested() }.onSuccess { list -> interestedIds = list.map { it.id }.toSet() }
             loading = false
         }
     }
@@ -129,35 +128,25 @@ fun DiscoverScreen(
             }
         } else {
             androidx.compose.runtime.key(listingFilter) {
-                // Free-scrolling feed (no snap / no forced jump to the next property).
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(shown, key = { it.id }) { property ->
-                        val isSaved = interestedIds.contains(property.id)
-                        Box(
-                            Modifier
-                                .fillParentMaxHeight(0.86f)
-                                .fillMaxWidth()
-                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
-                        ) {
-                            DiscoverCard(
-                                property = property,
-                                isSaved = isSaved,
-                                uiHidden = uiHidden,
-                                onTap = { onOpenProperty(property.id) },
-                                onLandlordClick = { onOpenLandlord(property.landlord_id) },
-                                onInterestedClick = {
-                                    scope.launch {
-                                        runCatching { repo.swipe(property.id, "right") }
-                                        interestedIds = interestedIds + property.id
-                                    }
-                                },
-                                onHideToggle = { uiHidden = !uiHidden },
-                            )
-                        }
-                    }
+                // Exactly one property per screen; swipe up/down to move on.
+                val pagerState = rememberPagerState(pageCount = { shown.size })
+                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                    val property = shown[page]
+                    val isSaved = interestedIds.contains(property.id)
+                    DiscoverCard(
+                        property = property,
+                        isSaved = isSaved,
+                        uiHidden = uiHidden,
+                        onTap = { onOpenProperty(property.id) },
+                        onLandlordClick = { onOpenLandlord(property.landlord_id) },
+                        onInterestedClick = {
+                            scope.launch {
+                                runCatching { repo.swipe(property.id, "right") }
+                                interestedIds = interestedIds + property.id
+                            }
+                        },
+                        onHideToggle = { uiHidden = !uiHidden },
+                    )
                 }
             }
         }
@@ -225,7 +214,7 @@ private fun DiscoverCard(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)), startY = 300f))
+                .background(Brush.verticalGradient(colorStops = arrayOf(0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.7f))))
         )
 
         if (images.size > 1 && !uiHidden) {
