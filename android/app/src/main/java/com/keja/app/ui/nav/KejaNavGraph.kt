@@ -27,6 +27,7 @@ private const val ROUTE_PROFILE = "profile"
 private const val ROUTE_PROPERTY = "property/{id}"
 private const val ROUTE_LANDLORD_PROFILE = "landlord-profile/{id}"
 private const val ROUTE_LANDLORD_DASHBOARD = "landlord-dashboard"
+private const val ROUTE_LANDLORD_COMMENTS = "landlord-comments"
 private const val ROUTE_ADMIN_HOME = "admin-home"
 private const val ROUTE_ADMIN_NEW = "admin-new"
 private const val ROUTE_ADMIN_LANDLORDS = "admin-landlords"
@@ -189,7 +190,15 @@ fun KejaNavGraph(
                     LandlordDashboardScreen(
                         onBack = { navController.popBackStack() },
                         onOpenPublicProfile = { lid -> navController.navigate("landlord-profile/$lid") },
+                        onOpenComments = { navController.navigate(ROUTE_LANDLORD_COMMENTS) },
                     )
+                }
+            }
+            composable(ROUTE_LANDLORD_COMMENTS) {
+                if (user == null) {
+                    LaunchedEffect(Unit) { navController.navigate(ROUTE_AUTH) }
+                } else {
+                    LandlordCommentsScreen(onBack = { navController.popBackStack() })
                 }
             }
             composable(ROUTE_ADMIN_HOME) {

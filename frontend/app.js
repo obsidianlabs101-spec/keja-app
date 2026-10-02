@@ -154,6 +154,7 @@ function render() {
   if (currentView === "adminAds") adminAds();
   if (currentView === "alerts") alertsPage();
   if (currentView === "landlordProfile") landlordProfile();
+  if (currentView === "landlordComments") landlordCommentsPage();
   localStorage.setItem("kejaView", currentView);
 }
 
@@ -375,6 +376,27 @@ function landlordProfile() {
   loadHostComments(landlordId);
 }
 
+
+/* ---------------- Landlord: comments about me ---------------- */
+function landlordCommentsPage() {
+  if (!isLoggedIn() || !currentUser || !currentUser.is_host) { goto("landlord"); return; }
+  app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">LANDLORD</div><h1>Comments</h1><div class="muted" id="lcSub" style="font-size:13px;margin-top:4px">What renters say about you.</div></div><button class="chip" id="lcBack">Back</button></div>
+ <div class="host-comments" id="lcBody">${loaderHtml()}</div></section>`;
+  document.getElementById("lcBack").onclick = () => goto("landlord");
+  api(`/properties/landlord/${currentUser.id}/comments`).then(list => {
+    const body = document.getElementById("lcBody");
+    if (!body) return;
+    const sub = document.getElementById("lcSub");
+    if (sub) sub.textContent = list.length ? `${list.length} ${list.length === 1 ? "renter has" : "renters have"} commented on your profile.` : "What renters say about you will appear here.";
+    body.innerHTML = list.length
+      ? list.map(c => `<div class="host-comment"><div class="hc-top">${avatarHtml(c.author_avatar, c.author_name, 34)}<div><strong>${escHtml(c.author_name)}</strong><div class="muted" style="font-size:11px">${timeAgo(c.created_at)}</div></div></div><p>${escHtml(c.body)}</p></div>`).join("")
+      : `<div class="empty"><h3>No comments yet</h3><p class="muted">Renters can leave one comment on your profile after viewing your listings.</p></div>`;
+  }).catch(() => {
+    const body = document.getElementById("lcBody");
+    if (body) { body.innerHTML = `<div class="empty"><h3>Couldn't load your comments</h3><button class="primary" id="lcRetry" style="margin-top:14px">Retry</button></div>`; document.getElementById("lcRetry").onclick = landlordCommentsPage; }
+  });
+}
+
 function loadHostComments(landlordId) {
   const body = document.getElementById("hostCommentsBody");
   if (!body) return;
@@ -478,7 +500,7 @@ function landlord() {
   }
 
   app.innerHTML = `<section class="dashboard"><div class="dash-top"><div><div class="eyebrow">LANDLORD</div><h1>Dashboard</h1></div><button class="primary" id="addProperty">＋ Add property</button></div>
- <div class="profile-strip"><label class="avatar-upload" title="Change photo">${avatarHtml(currentUser.profile_pic_url, currentUser.name, 60)}<input type="file" id="avatarFile" accept="image/*" hidden></label><div style="flex:1;min-width:0"><strong>${escHtml(currentUser.name || "Your profile")}</strong><div class="muted" style="font-size:12px" id="avatarMsg">Click your photo to change it</div></div><button class="chip" id="viewPublicProfile">View profile</button></div>
+ <div class="profile-strip"><label class="avatar-upload" title="Change photo">${avatarHtml(currentUser.profile_pic_url, currentUser.name, 60)}<input type="file" id="avatarFile" accept="image/*" hidden></label><div style="flex:1;min-width:0"><strong>${escHtml(currentUser.name || "Your profile")}</strong><div class="muted" style="font-size:12px" id="avatarMsg">Click your photo to change it</div></div><button class="chip" id="viewPublicProfile">View profile</button><button class="chip" id="viewMyComments">Comments</button></div>
  <div class="stats" id="landlordStats"><div class="stat">Active listings<strong>…</strong></div><div class="stat">Property views<strong>…</strong></div><div class="stat">Interested<strong>…</strong></div><div class="stat">Contact unlocks<strong>…</strong></div></div>
  <div class="section-head"><h2>Your listings</h2><span class="muted" id="listingCount"></span></div>
  <div class="table-card"><table class="table"><thead><tr><th>Property</th><th>Price</th><th>Views</th><th>Status</th><th></th></tr></thead><tbody id="listingsBody"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
@@ -494,6 +516,7 @@ function landlord() {
       toast("Profile photo updated"); landlord();
     } catch (e) { msg.textContent = e.message || "Upload failed"; }
   };
+  document.getElementById("viewMyComments").onclick = () => goto("landlordComments");
   document.getElementById("viewPublicProfile").onclick = () => {
     api(`/properties/landlord/${currentUser.id}`).then(d => openLandlordModal(d, null)).catch(() => toast("Couldn't load your profile"));
   };

@@ -50,7 +50,7 @@ import com.keja.app.ui.theme.LocalKejaPalette
 import kotlinx.coroutines.launch
 
 @Composable
-fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) -> Unit = {}) {
+fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) -> Unit = {}, onOpenComments: () -> Unit = {}) {
     val palette = LocalKejaPalette.current
     val context = LocalContext.current
     val repo = remember { AppContainer.repository(context) }
@@ -108,6 +108,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
                 avatarMsg = avatarMsg,
                 onChangePhoto = { avatarPicker.launch("image/*") },
                 onViewProfile = { user?.id?.let(onOpenPublicProfile) },
+                onComments = onOpenComments,
                 onAdd = { showAddForm = true },
             )
         } else {
@@ -269,6 +270,7 @@ private fun LandlordHero(
     avatarMsg: String?,
     onChangePhoto: () -> Unit,
     onViewProfile: () -> Unit,
+    onComments: () -> Unit,
     onAdd: () -> Unit,
 ) {
     Box(
@@ -325,6 +327,16 @@ private fun LandlordHero(
                 ) {
                     Text("View profile", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
+            }
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier
+                    .clip(com.keja.app.ui.theme.KejaShapes.pill)
+                    .background(Color.White.copy(alpha = 0.22f))
+                    .clickable(onClick = onComments)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text("Renter comments", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
