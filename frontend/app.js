@@ -134,7 +134,7 @@ function updateAvatar() {
 }
 
 /* ---------------- Render dispatch ---------------- */
-const ADMIN_VIEWS = ["admin", "adminNew", "adminLandlords", "adminPayments", "adminListings", "adminAds", "profile", "alerts"];
+const ADMIN_VIEWS = ["admin", "adminNew", "adminLandlords", "adminPayments", "adminListings", "adminAds", "adminCatalog", "profile", "alerts"];
 function render() {
   // Role-based pages: admins only see admin pages; landlords get "My listings" instead of Interested.
   if (isLoggedIn() && currentUser) {
@@ -152,6 +152,7 @@ function render() {
   if (currentView === "adminPayments") adminPayments();
   if (currentView === "adminListings") adminListings();
   if (currentView === "adminAds") adminAds();
+  if (currentView === "adminCatalog") adminCatalog();
   if (currentView === "alerts") alertsPage();
   if (currentView === "landlordProfile") landlordProfile();
   if (currentView === "landlordComments") landlordCommentsPage();
@@ -167,7 +168,25 @@ function goto(view, params) {
 
 /* ---------------- Shared property card ---------------- */
 const COMMERCIAL_TYPES = ["Shop", "Office", "Warehouse", "Commercial"];
-function categoryOf(p) { return p.property_type === "Airbnb" ? "airbnb" : p.property_type === "Hostel" ? "hostels" : COMMERCIAL_TYPES.includes(p.property_type) ? "commercial" : "apartments"; }
+// Admin-managed housing categories + keyword locations (GET /properties/categories, /locations).
+let CATALOG = { cats: [], locs: [] };
+function loadCatalog() {
+  return Promise.all([api("/properties/categories"), api("/properties/locations")])
+    .then(([c, l]) => { CATALOG.cats = c || []; CATALOG.locs = l || []; })
+    .catch(() => {});
+}
+function groupOfType(t) {
+  const c = CATALOG.cats.find(x => x.name === t);
+  if (c) return c.group;
+  return t === "Airbnb" ? "airbnb" : t === "Hostel" ? "hostels" : COMMERCIAL_TYPES.includes(t) ? "commercial" : "apartments";
+}
+function categoryOf(p) { return groupOfType(p.property_type); }
+// Names an admin has left switched on for a Home group (falls back to the original lists if the catalog hasn't loaded).
+function typesForGroup(g) {
+  const live = CATALOG.cats.filter(c => c.group === g && c.active).map(c => c.name);
+  if (live.length || CATALOG.cats.length) return live;
+  return { apartments: ["Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House"], hostels: ["Hostel"], airbnb: ["Airbnb"], commercial: COMMERCIAL_TYPES }[g] || [];
+}
 // Real listing counts per Home category card, folded from /properties/category-counts
 function foldCategoryCounts(byType) {
   const out = { apartments: 0, hostels: 0, airbnb: 0, commercial: 0 };
@@ -199,6 +218,8 @@ function bindCards() {
 }
 
 /* ---------------- Home ---------------- */
+function areaChipsHtml() { return (CATALOG.locs.length ? CATALOG.locs : HOME_AREAS).map(a => `<button class="chip" data-area="${escHtml(a)}">📍 ${escHtml(a)}</button>`).join(""); }
+function bindAreaChips() { document.querySelectorAll("#areaChips .chip").forEach(b => b.onclick = () => { document.getElementById("searchInput").value = b.dataset.area; search(); }); }
 const HOME_AREAS = ["Kilimani", "Westlands", "Roysambu", "Kasarani", "Kahawa", "Lavington", "Ruaka", "Juja"];
 function home() {
   app.innerHTML = `<section class="hero"><div class="eyebrow">WELCOME BACK 👋</div><h1>Find a place<br>you'll love.</h1><p>Apartments, hostels, Airbnb stays and shops — all in one place.</p>
@@ -210,20 +231,23 @@ function home() {
    <button class="cat-chip" data-cat="airbnb"><span>✦</span>Airbnb<b class="cat-count" data-c="airbnb" hidden></b></button>
    <button class="cat-chip" data-cat="commercial"><span>▦</span>Shops<b class="cat-count" data-c="commercial" hidden></b></button>
  </div>
- <div class="chips">${HOME_AREAS.map(a => `<button class="chip" data-area="${a}">📍 ${a}</button>`).join("")}</div>
+ <div class="chips" id="areaChips">${areaChipsHtml()}</div>
  <div class="home-head"><h2 id="homeHeadline">Finding places…</h2><div class="muted" style="font-size:12px">Newest first · tap a card to see photos, price and contact</div></div>
  <div class="grid" id="homeGrid">${skelCards(3).replace(/class="skel-card"/g, 'class="skel-card wide"')}</div>`;
 
   document.getElementById("searchBtn").onclick = () => search();
   document.getElementById("searchInput").onkeydown = e => { if (e.key === "Enter") search(); };
   document.querySelectorAll(".cat-chip").forEach(b => b.onclick = () => categoryPage(b.dataset.cat));
-  document.querySelectorAll(".chips .chip").forEach(b => b.onclick = () => { document.getElementById("searchInput").value = b.dataset.area; search(); });
+  bindAreaChips();
   document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = (b.dataset.lt === "all" || homeListingType === b.dataset.lt) ? null : b.dataset.lt; home(); });
 
   const lt = homeListingType ? "&listing_type=" + homeListingType : "";
   let totalPlaces = 0;
   const setHeadline = () => { const h = document.getElementById("homeHeadline"); if (h) h.textContent = totalPlaces > 0 ? `${totalPlaces} places to explore` : "Latest listings"; };
-  api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : "")).then(byType => {
+  loadCatalog().then(() => {
+    const ac = document.getElementById("areaChips"); if (ac) { ac.innerHTML = areaChipsHtml(); bindAreaChips(); }
+    return api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : ""));
+  }).then(byType => {
     const c = foldCategoryCounts(byType);
     totalPlaces = Object.values(c).reduce((x, y) => x + y, 0);
     // Never advertise an empty shelf: a count badge only appears when there is something to see.
@@ -656,7 +680,8 @@ function admin() {
     ["adminListings", "All listings", "total_properties", "Reject, or mark as booked"],
   ];
   app.innerHTML = adminHead("KEJA ADMIN", "Overview", "What needs your attention right now.") +
-    `<div class="stats" id="adminStats">${tiles.map(([v, t]) => `<button class="stat admin-tile" data-go="${v}">${t}<strong>…</strong></button>`).join("")}<div class="stat">Total users<strong id="tileUsers">…</strong></div></div></section>`;
+    `<div class="stats" id="adminStats">${tiles.map(([v, t]) => `<button class="stat admin-tile" data-go="${v}">${t}<strong>…</strong></button>`).join("")}<div class="stat">Total users<strong id="tileUsers">…</strong></div></div><button class="primary" id="catalogBtn" style="width:100%;margin-top:14px">Categories &amp; locations</button></section>`;
+  document.getElementById("catalogBtn").onclick = () => goto("adminCatalog");
   document.querySelectorAll(".admin-tile").forEach(b => b.onclick = () => goto(b.dataset.go));
   api("/admin/keja/overview").then(o => {
     document.getElementById("adminStats").innerHTML = tiles.map(([v, t, k, sub]) => `<button class="stat admin-tile" data-go="${v}">${t}<strong>${o[k]}</strong><small class="muted">${sub}</small></button>`).join("") + `<div class="stat">Total users<strong>${o.total_users}</strong></div>`;
@@ -770,6 +795,48 @@ function adminListings() {
   };
   const load = () => api("/admin/keja/properties?review=all").then(list => { all = list; draw(); }).catch(e => { const b = document.getElementById("adminBody"); if (b) b.innerHTML = `<div class="empty">${escHtml(e.message || "Couldn't load")}</div>`; });
   document.querySelectorAll("#adminFilters .chip").forEach(c => c.onclick = () => { filter = c.dataset.f; draw(); });
+  load();
+}
+
+
+/* ---------------- Admin: house categories + keyword locations ---------------- */
+const GROUP_LABELS = { apartments: "Apartments", hostels: "Hostels", airbnb: "Airbnb", commercial: "Shops / Commercial" };
+function adminCatalog() {
+  if (!adminGuard()) return;
+  app.innerHTML = adminHead("KEJA ADMIN", "Categories & locations", "Add house types like Bungalow or Maisonette, and the keyword locations people tap on Home.") +
+    `<div id="catBody">${loaderHtml()}</div></section>`;
+  const load = () => api("/admin/catalog").then(d => {
+    const body = document.getElementById("catBody"); if (!body) return;
+    const catRow = c => `<div class="setting" style="align-items:center;gap:8px"><div style="min-width:0;flex:1"><strong>${escHtml(c.name)}</strong> ${c.active ? "" : '<span class="pill red">Hidden</span>'}<div class="muted" style="font-size:12px">${c.listings} listing${c.listings === 1 ? "" : "s"}</div></div>
+      <button class="chip" data-act="rename" data-id="${c.id}" data-name="${escHtml(c.name)}">Rename</button>
+      <button class="chip" data-act="toggle" data-id="${c.id}" data-active="${c.active}">${c.active ? "Hide" : "Show"}</button>
+      ${c.listings === 0 ? `<button class="chip danger" data-act="del" data-id="${c.id}">Delete</button>` : ""}</div>`;
+    const groups = d.groups.map(g => `<div class="section-head"><h2>${GROUP_LABELS[g] || g}</h2></div><div class="settings-list">${d.categories.filter(c => c.group === g).map(catRow).join("") || '<p class="muted" style="padding:6px 2px">None yet</p>'}</div>`).join("");
+    body.innerHTML = `<div class="panel"><strong>Add a category</strong>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="newCatName" placeholder="e.g. Bungalow" style="flex:1;min-width:140px"><select id="newCatGroup">${d.groups.map(g => `<option value="${g}">${GROUP_LABELS[g] || g}</option>`).join("")}</select><button class="primary" id="addCatBtn">Add</button></div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">The group decides which Home chip the listings appear under. Landlords see it in the property-type picker straight away.</p></div>
+      ${groups}
+      <div class="section-head"><h2>Keyword locations</h2></div>
+      <div class="panel"><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="newLocName" placeholder="e.g. Kileleshwa" style="flex:1;min-width:140px"><button class="primary" id="addLocBtn">Add</button></div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">These are the "Popular areas" chips on Home and the suggestions landlords see when typing a listing's location.</p></div>
+      <div class="settings-list">${d.locations.map(l => `<div class="setting" style="align-items:center;gap:8px"><div style="flex:1"><strong>${escHtml(l.name)}</strong> ${l.active ? "" : '<span class="pill red">Hidden</span>'}</div>
+        <button class="chip" data-lact="toggle" data-id="${l.id}" data-active="${l.active}">${l.active ? "Hide" : "Show"}</button><button class="chip danger" data-lact="del" data-id="${l.id}">Delete</button></div>`).join("") || '<p class="muted">No locations yet</p>'}</div>`;
+    const done = () => { loadCatalog(); load(); };
+    const fail = e => toast(e.message || "Something went wrong");
+    document.getElementById("addCatBtn").onclick = () => api("/admin/catalog/categories", { method: "POST", body: JSON.stringify({ name: document.getElementById("newCatName").value, group: document.getElementById("newCatGroup").value }) }).then(() => { toast("Category added"); done(); }).catch(fail);
+    document.getElementById("addLocBtn").onclick = () => api("/admin/catalog/locations", { method: "POST", body: JSON.stringify({ name: document.getElementById("newLocName").value }) }).then(() => { toast("Location added"); done(); }).catch(fail);
+    body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
+      const id = b.dataset.id, act = b.dataset.act;
+      if (act === "rename") { const n = prompt("Rename category", b.dataset.name); if (!n) return; api(`/admin/catalog/categories/${id}`, { method: "PATCH", body: JSON.stringify({ name: n }) }).then(done).catch(fail); }
+      if (act === "toggle") api(`/admin/catalog/categories/${id}`, { method: "PATCH", body: JSON.stringify({ active: b.dataset.active !== "true" }) }).then(done).catch(fail);
+      if (act === "del" && confirm("Delete this category?")) api(`/admin/catalog/categories/${id}`, { method: "DELETE" }).then(done).catch(fail);
+    });
+    body.querySelectorAll("[data-lact]").forEach(b => b.onclick = () => {
+      const id = b.dataset.id;
+      if (b.dataset.lact === "toggle") api(`/admin/catalog/locations/${id}`, { method: "PATCH", body: JSON.stringify({ active: b.dataset.active !== "true" }) }).then(done).catch(fail);
+      if (b.dataset.lact === "del" && confirm("Delete this location?")) api(`/admin/catalog/locations/${id}`, { method: "DELETE" }).then(done).catch(fail);
+    });
+  }).catch(e => { const b = document.getElementById("catBody"); if (b) b.innerHTML = `<div class="empty"><h3>Couldn't load</h3><p class="muted">${escHtml(e.message || "")}</p></div>`; });
   load();
 }
 
@@ -1011,16 +1078,17 @@ function openAdd() {
  <div class="form-grid" style="margin-top:18px"><label class="field"><span>Listing type</span><select id="addListing"><option value="rent">For rent</option><option value="sale">For sale</option></select></label>
  <label class="field"><span>Category</span><select id="addCategory"><option value="apartments">Apartment</option><option value="hostels">Hostel</option><option value="airbnb">Airbnb</option><option value="commercial">Commercial / Shop</option></select></label>
  <label class="field" id="addTypeWrap"><span>Property type</span><select id="addType"></select></label>
- <label class="field"><span id="addPriceLabel">Monthly rent (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Agent fee in KES (optional)</span><input id="addAgentFee" type="number" placeholder="Leave empty if none"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
+ <label class="field"><span id="addPriceLabel">Monthly rent (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Agent fee in KES (optional)</span><input id="addAgentFee" type="number" placeholder="Leave empty if none"></label><label class="field"><span>Location</span><input id="addLocation" list="areaList" placeholder="Kilimani" autocomplete="off"><datalist id="areaList">${CATALOG.locs.map(a => `<option value="${escHtml(a)}">`).join("")}</datalist></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
  <p class="muted field full" id="addError" style="font-size:12px;min-height:14px"></p>
  <button class="primary field full" id="publish">Publish listing</button></div>`;
   showModal();
   document.getElementById("close").onclick = hideModal;
-  const SUBTYPES = { apartments: ["Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House"], commercial: ["Shop", "Office", "Warehouse", "Commercial"] };
   const syncTypes = () => {
     const cat = document.getElementById("addCategory").value;
-    document.getElementById("addTypeWrap").hidden = cat === "airbnb" || cat === "hostels";
-    document.getElementById("addType").innerHTML = (SUBTYPES[cat] || []).map(t => `<option>${t}</option>`).join("");
+    const opts = typesForGroup(cat);
+    // One option (e.g. just "Hostel") needs no picker; two or more (e.g. Bedsitter, Bungalow…) do.
+    document.getElementById("addTypeWrap").hidden = opts.length <= 1;
+    document.getElementById("addType").innerHTML = opts.map(t => `<option>${escHtml(t)}</option>`).join("");
   };
   document.getElementById("addCategory").onchange = syncTypes;
   document.getElementById("addListing").onchange = () => { document.getElementById("addPriceLabel").textContent = document.getElementById("addListing").value === "sale" ? "Asking price (KES)" : "Monthly rent (KES)"; };
@@ -1029,7 +1097,9 @@ function openAdd() {
     const btn = document.getElementById("publish");
     const errEl = document.getElementById("addError");
     const catVal = document.getElementById("addCategory").value;
-    const type = catVal === "airbnb" ? "Airbnb" : catVal === "hostels" ? "Hostel" : document.getElementById("addType").value;
+    const opts = typesForGroup(catVal);
+    const type = opts.length > 1 ? document.getElementById("addType").value
+      : (opts[0] || (catVal === "airbnb" ? "Airbnb" : catVal === "hostels" ? "Hostel" : document.getElementById("addType").value));
     const listingType = document.getElementById("addListing").value;
     const agentFee = Number(document.getElementById("addAgentFee").value) || null;
     const price = Number(document.getElementById("addPrice").value);
@@ -1352,6 +1422,8 @@ if (window.visualViewport) {
 
 /* ---------------- Boot ---------------- */
 updateAvatar();
+loadCatalog();
+
 // Email verification landing: the link in the email opens /?verify=<token>.
 (function handleVerifyLink() {
   const t = new URLSearchParams(location.search).get("verify");
