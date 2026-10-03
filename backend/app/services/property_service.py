@@ -14,7 +14,7 @@ from app.schemas.property import PropertyCreate, PropertyFilters, PropertyUpdate
 def _base_query(db: Session):
     return (
         db.query(Property)
-        .options(joinedload(Property.images))
+        .options(joinedload(Property.images), joinedload(Property.landlord))
         .filter(Property.is_removed == False)  # noqa: E712
     )
 
@@ -129,6 +129,19 @@ def add_image(db: Session, prop: Property, url: str, is_main: bool = False) -> P
     return image
 
 
+def category_counts(db: Session, listing_type: Optional[str] = None) -> dict:
+    """{property_type: number of live listings}. Clients fold these into
+    their categories (Apartments / Hostels / Airbnb / Shops) for the Home
+    cards, so the numbers are real totals rather than 'whatever loaded'."""
+    q = (
+        db.query(Property.property_type, func.count(Property.id))
+        .filter(Property.is_removed == False, Property.is_available == True)  # noqa: E712
+    )
+    if listing_type in ("rent", "sale"):
+        q = q.filter(Property.listing_type == listing_type)
+    return {(t or "Other"): n for t, n in q.group_by(Property.property_type).all()}
+
+
 def search_properties(db: Session, filters: PropertyFilters, limit: int = 50, offset: int = 0) -> List[Property]:
     query = _base_query(db).filter(Property.is_available == True)  # noqa: E712
 
@@ -151,6 +164,7 @@ def search_properties(db: Session, filters: PropertyFilters, limit: int = 50, of
         query = query.filter(
             or_(
                 Property.title.ilike(like),
+                Property.property_type.ilike(like),
                 Property.area.ilike(like),
                 Property.county.ilike(like),
                 Property.proximity_note.ilike(like),

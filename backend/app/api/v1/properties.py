@@ -59,6 +59,11 @@ def search(
     return property_service.search_properties(db, filters, limit=limit, offset=offset)
 
 
+@router.get("/category-counts")
+def category_counts(listing_type: Optional[str] = None, db: Session = Depends(get_db)):
+    return property_service.category_counts(db, listing_type)
+
+
 @router.get("/discover", response_model=List[PropertyRead])
 def discover(
     county: Optional[str] = None,

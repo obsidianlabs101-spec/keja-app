@@ -176,6 +176,7 @@ class LandlordSummary(BaseModel):
 class PropertyRead(BaseModel):
     id: UUID
     landlord_id: UUID
+    landlord_verified: bool = False
     title: str
     description: Optional[str] = None
     price: float

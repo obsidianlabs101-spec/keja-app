@@ -167,12 +167,18 @@ function goto(view, params) {
 
 /* ---------------- Shared property card ---------------- */
 const COMMERCIAL_TYPES = ["Shop", "Office", "Warehouse", "Commercial"];
-function categoryOf(p) { return p.property_type === "Airbnb" ? "airbnb" : COMMERCIAL_TYPES.includes(p.property_type) ? "commercial" : "apartments"; }
+function categoryOf(p) { return p.property_type === "Airbnb" ? "airbnb" : p.property_type === "Hostel" ? "hostels" : COMMERCIAL_TYPES.includes(p.property_type) ? "commercial" : "apartments"; }
+// Real listing counts per Home category card, folded from /properties/category-counts
+function foldCategoryCounts(byType) {
+  const out = { apartments: 0, hostels: 0, airbnb: 0, commercial: 0 };
+  Object.entries(byType || {}).forEach(([t, n]) => { out[categoryOf({ property_type: t })] += n; });
+  return out;
+}
 function priceSuffixText(p) { return p.listing_type === "sale" ? "for sale" : "/ month"; }
 function agentFeeHtml(p) { return p.agent_fee > 0 ? `<div class="agent-fee">Agent fee: ${money(p.agent_fee)}</div>` : ""; }
 // For rent / For sale pills. `active` is "rent", "sale" or null (both).
 function listingPillsHtml(active) {
-  return `<div class="lt-pills">${[["rent", "For rent"], ["sale", "For sale"]].map(([k, l]) => `<button type="button" class="lt-pill ${active === k ? "active" : ""}" data-lt="${k}">${l}</button>`).join("")}</div>`;
+  return `<div class="lt-pills">${[["all", "All"], ["rent", "For rent"], ["sale", "For sale"]].map(([k, l]) => `<button type="button" class="lt-pill ${(active || "all") === k ? "active" : ""}" data-lt="${k}">${l}</button>`).join("")}</div>`;
 }
 let homeListingType = null, discoverListingType = null;
 
@@ -180,25 +186,34 @@ function propertyCard(p) {
   return `<article class="property" data-property="${p.id}">
  <img src="${mediaUrl(p.main_image_url)}" alt="${escHtml(p.property_type)} in ${escHtml(p.area || p.county)}">
  <div class="property-body"><div class="price">${money(p.price)}<span class="muted" style="font-size:12px;font-weight:500"> ${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}
- <div class="meta">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</div>${p.proximity_note ? `<div class="tag">${escHtml(p.proximity_note)}</div>` : ""}${p.is_booked ? `<div class="tag" style="background:#FFF0F0;color:#C92D2D;margin-left:6px">Booked</div>` : ""}</div></article>`;
+ <div class="meta">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}${p.landlord_verified ? ' <span class="vbadge" title="Verified landlord">✓ Verified</span>' : ""}</div>${p.proximity_note ? `<div class="tag">${escHtml(p.proximity_note)}</div>` : ""}${p.is_booked ? `<div class="tag" style="background:#FFF0F0;color:#C92D2D;margin-left:6px">Booked</div>` : ""}</div></article>`;
 }
+function freshCard(p) {
+  return `<article class="fresh" data-property="${p.id}"><img src="${mediaUrl(p.main_image_url)}" alt="${escHtml(p.property_type)} in ${escHtml(p.area || p.county)}" loading="lazy">
+ <div class="fresh-body"><div class="price">${money(p.price)}<span class="muted" style="font-size:11px;font-weight:600"> ${priceSuffixText(p)}</span></div>
+ <div class="meta">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</div>${p.landlord_verified ? '<span class="vbadge">✓ Verified</span>' : ""}</div></article>`;
+}
+const skelCards = n => Array.from({ length: n }, () => '<div class="skel-card"><div class="skel skel-img"></div><div class="skel skel-line"></div><div class="skel skel-line short"></div></div>').join("");
 function bindCards() {
   document.querySelectorAll("[data-property]").forEach(el => el.onclick = () => openProperty(el.dataset.property));
 }
 
 /* ---------------- Home ---------------- */
 function home() {
-  app.innerHTML = `<section class="hero"><div class="eyebrow">WELCOME BACK 👋</div><h1>Find a place<br>you'll love.</h1><p>Discover apartments, Airbnb stays and shops/commercial spaces in one place.</p>
+  app.innerHTML = `<section class="hero"><div class="eyebrow">WELCOME BACK 👋</div><h1>Find a place<br>you'll love.</h1><p>Apartments, hostels, Airbnb stays and shops — all in one place.</p>
  <div class="search"><span style="padding:12px">⌕</span><input id="searchInput" placeholder="Search location, type or landmark"><button id="searchBtn">Search</button></div></section>
  ${listingPillsHtml(homeListingType)}
+ <div class="section-head"><h2>Fresh listings</h2><button class="chip" id="discoverBtn">See all</button></div>
+ <div class="h-row" id="freshRow">${skelCards(3)}</div>
  <div class="category-grid">
-   <button class="category-card" data-cat="apartments"><span class="cat-icon">⌂</span><strong>Apartments</strong><small>Long-term homes</small></button>
-   <button class="category-card" data-cat="airbnb"><span class="cat-icon">✦</span><strong>Airbnb</strong><small>Short stays</small></button>
-   <button class="category-card" data-cat="commercial"><span class="cat-icon">▦</span><strong>Shops / Commercial</strong><small>Business spaces</small></button>
+   <button class="category-card" data-cat="apartments"><span class="cat-icon">⌂</span><span class="cat-txt"><strong>Apartments</strong><small><b class="cat-count" data-c="apartments"></b>Long-term homes</small></span></button>
+   <button class="category-card" data-cat="hostels"><span class="cat-icon">▤</span><span class="cat-txt"><strong>Hostels</strong><small><b class="cat-count" data-c="hostels"></b>Student rooms</small></span></button>
+   <button class="category-card" data-cat="airbnb"><span class="cat-icon">✦</span><span class="cat-txt"><strong>Airbnb</strong><small><b class="cat-count" data-c="airbnb"></b>Short stays</small></span></button>
+   <button class="category-card" data-cat="commercial"><span class="cat-icon">▦</span><span class="cat-txt"><strong>Shops</strong><small><b class="cat-count" data-c="commercial"></b>Business spaces</small></span></button>
  </div>
- <div class="ad" data-ad-slot="home">ADVERTISEMENT</div>
- <div class="section-head"><h2>Popular around Nairobi</h2></div><div class="chips"><button class="chip" data-area="Kilimani">Kilimani</button><button class="chip" data-area="Westlands">Westlands</button><button class="chip" data-area="Roysambu">Roysambu</button><button class="chip" data-area="Kasarani">Kasarani</button><button class="chip" data-area="Kahawa">Kahawa</button></div>
- <div class="section-head"><h2>Recommended for you</h2><button class="chip" id="discoverBtn">See all</button></div><div class="grid" id="homeGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
+ <div class="section-head"><h2>Popular areas</h2></div>${chips}
+ <div class="ad" data-ad-slot="home"></div>
+ <div id="recoWrap" hidden><div class="section-head"><h2>Recommended for you</h2></div><div class="grid" id="homeGrid"></div></div>`;
   hydrateAds();
 
   document.getElementById("discoverBtn").onclick = () => goto("discover");
@@ -206,24 +221,33 @@ function home() {
   document.getElementById("searchInput").onkeydown = e => { if (e.key === "Enter") search(); };
   document.querySelectorAll(".category-card").forEach(b => b.onclick = () => categoryPage(b.dataset.cat));
   document.querySelectorAll(".chips .chip").forEach(b => b.onclick = () => { document.getElementById("searchInput").value = b.dataset.area; search(); });
+  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = (b.dataset.lt === "all" || homeListingType === b.dataset.lt) ? null : b.dataset.lt; home(); });
 
-  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = homeListingType === b.dataset.lt ? null : b.dataset.lt; home(); });
+  const lt = homeListingType ? "&listing_type=" + homeListingType : "";
+  api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : "")).then(byType => {
+    const c = foldCategoryCounts(byType);
+    document.querySelectorAll(".cat-count").forEach(el => { const n = c[el.dataset.c] || 0; el.textContent = n + (n === 1 ? " listing · " : " listings · "); });
+  }).catch(() => {});
 
-  api("/properties/?limit=12" + (homeListingType ? "&listing_type=" + homeListingType : "")).then(list => {
+  api("/properties/?limit=24" + lt).then(list => {
     properties = list;
-    const grid = document.getElementById("homeGrid");
-    if (!grid) return; // user navigated away already
+    const row = document.getElementById("freshRow");
+    if (!row) return; // user navigated away already
     const emptyMsg = homeListingType === "sale" ? "Nothing for sale yet" : homeListingType === "rent" ? "Nothing for rent yet" : "No listings yet";
-    grid.innerHTML = list.length ? list.slice(0, 6).map(propertyCard).join("") : `<div class="empty" style="grid-column:1/-1"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`;
+    if (!list.length) { row.outerHTML = `<div class="empty"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`; return; }
+    row.innerHTML = list.slice(0, 8).map(freshCard).join("");
+    const rest = list.slice(8);
+    if (rest.length) { document.getElementById("homeGrid").innerHTML = rest.map(propertyCard).join(""); document.getElementById("recoWrap").hidden = false; }
     bindCards();
   }).catch(() => {
-    const grid = document.getElementById("homeGrid");
-    if (grid) grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>Couldn't load listings</h3></div>`;
+    const row = document.getElementById("freshRow");
+    if (row) row.outerHTML = `<div class="empty"><h3>Couldn't load listings</h3><button class="primary" id="homeRetry" style="margin-top:12px">Retry</button></div>`;
+    const r = document.getElementById("homeRetry"); if (r) r.onclick = home;
   });
 }
 
 function categoryPage(cat) {
-  const labels = { apartments: "Apartments", airbnb: "Airbnb", commercial: "Shops / Commercial" };
+  const labels = { apartments: "Apartments", hostels: "Hostels", airbnb: "Airbnb", commercial: "Shops / Commercial" };
   app.innerHTML = `<div class="section-head"><div><div class="eyebrow">KEJA CATEGORIES</div><h2>${labels[cat]}</h2></div><button class="chip" id="backHome">Back</button></div>
  <div class="grid" id="catGrid"><div class="empty" style="grid-column:1/-1">${loaderHtml()}</div></div>`;
   document.getElementById("backHome").onclick = () => goto("home");
@@ -263,7 +287,7 @@ function discover() {
  ${listingPillsHtml(discoverListingType)}
  <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div></section>`;
 
-  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = discoverListingType === b.dataset.lt ? null : b.dataset.lt; discover(); });
+  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = (b.dataset.lt === "all" || discoverListingType === b.dataset.lt) ? null : b.dataset.lt; discover(); });
   api("/properties/discover?limit=50" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
     discoverQueue = list;
     const scroller = document.getElementById("discoverScroll");
@@ -976,7 +1000,7 @@ function renderContactClaimForm(propertyId, status) {
 function openAdd() {
   modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">Add property</h2><button class="close" id="close">×</button></div>
  <div class="form-grid" style="margin-top:18px"><label class="field"><span>Listing type</span><select id="addListing"><option value="rent">For rent</option><option value="sale">For sale</option></select></label>
- <label class="field"><span>Category</span><select id="addCategory"><option value="apartments">Apartment</option><option value="airbnb">Airbnb</option><option value="commercial">Commercial / Shop</option></select></label>
+ <label class="field"><span>Category</span><select id="addCategory"><option value="apartments">Apartment</option><option value="hostels">Hostel</option><option value="airbnb">Airbnb</option><option value="commercial">Commercial / Shop</option></select></label>
  <label class="field" id="addTypeWrap"><span>Property type</span><select id="addType"></select></label>
  <label class="field"><span id="addPriceLabel">Monthly rent (KES)</span><input id="addPrice" type="number" placeholder="15000"></label><label class="field"><span>Agent fee in KES (optional)</span><input id="addAgentFee" type="number" placeholder="Leave empty if none"></label><label class="field"><span>Location</span><input id="addLocation" placeholder="Kilimani"></label><label class="field"><span>Nearby landmark</span><input id="addLandmark" placeholder="10 min from Yaya"></label><label class="field full"><span>Description</span><textarea id="addDesc" rows="4" placeholder="Tell renters about the property"></textarea></label><div class="field full"><span>What does it have?</span><small class="muted">Tick everything that applies — renters see these as icons on your listing.</small>${amenityPickerHtml()}</div><label class="field full"><span>Property images</span><input id="addImages" type="file" multiple accept="image/*"></label>
  <p class="muted field full" id="addError" style="font-size:12px;min-height:14px"></p>
@@ -986,7 +1010,7 @@ function openAdd() {
   const SUBTYPES = { apartments: ["Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House"], commercial: ["Shop", "Office", "Warehouse", "Commercial"] };
   const syncTypes = () => {
     const cat = document.getElementById("addCategory").value;
-    document.getElementById("addTypeWrap").hidden = cat === "airbnb";
+    document.getElementById("addTypeWrap").hidden = cat === "airbnb" || cat === "hostels";
     document.getElementById("addType").innerHTML = (SUBTYPES[cat] || []).map(t => `<option>${t}</option>`).join("");
   };
   document.getElementById("addCategory").onchange = syncTypes;
@@ -995,7 +1019,8 @@ function openAdd() {
   document.getElementById("publish").onclick = async () => {
     const btn = document.getElementById("publish");
     const errEl = document.getElementById("addError");
-    const type = document.getElementById("addCategory").value === "airbnb" ? "Airbnb" : document.getElementById("addType").value;
+    const catVal = document.getElementById("addCategory").value;
+    const type = catVal === "airbnb" ? "Airbnb" : catVal === "hostels" ? "Hostel" : document.getElementById("addType").value;
     const listingType = document.getElementById("addListing").value;
     const agentFee = Number(document.getElementById("addAgentFee").value) || null;
     const price = Number(document.getElementById("addPrice").value);
@@ -1216,7 +1241,7 @@ function hydrateAds() {
       const img = `<img src="${escHtml(safeHttpUrl(d.ad.image_url))}" alt="Advertisement" loading="lazy">`;
       const link = safeHttpUrl(d.ad.link_url);
       el.classList.add("has-ad");
-      el.innerHTML = link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener noreferrer sponsored">${img}</a>` : img;
+      el.innerHTML = `<span class="ad-tag">Sponsored</span>` + (link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener noreferrer sponsored">${img}</a>` : img);
     }).catch(() => {});
   });
 }

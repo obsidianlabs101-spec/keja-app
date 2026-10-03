@@ -77,6 +77,13 @@ class Property(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     landlord = relationship("User", foreign_keys=[landlord_id])
+
+    @property
+    def landlord_verified(self) -> bool:
+        """True when an admin has approved this landlord's ID verification.
+        Shown as a "Verified landlord" badge on listings."""
+        lord = self.landlord
+        return bool(lord and getattr(lord, "host_verification_status", None) == "approved")
     images = relationship(
         "PropertyImage",
         back_populates="property",
