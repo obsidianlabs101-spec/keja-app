@@ -415,3 +415,145 @@ private fun CategoryCard(icon: ImageVector, label: String, sub: String, active: 
         }
     }
 }
+
+/** Shown on the phone's back button from Home, once per app session (unless
+ * "Don't ask again" was set previously). Offers to set up alerts instead of
+ * leaving; a second back-press (or tapping Exit here) says goodbye and closes
+ * the app for real. See sayGoodbyeAndExit() and the BackHandler above. */
+@Composable
+private fun ExitIntentDialog(
+    onDismiss: (dontAskAgain: Boolean) -> Unit,
+    onAdjustNotifications: () -> Unit,
+    onExitNow: () -> Unit,
+) {
+    val palette = LocalKejaPalette.current
+    var dontAskAgain by remember { mutableStateOf(false) }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = { onDismiss(dontAskAgain) }) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .shadow(16.dp, KejaShapes.card, ambientColor = palette.primary.copy(alpha = 0.25f))
+                .clip(KejaShapes.card)
+                .background(palette.card)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(palette.primary, palette.coral))),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.NotificationsActive, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
+            }
+            Spacer(Modifier.height(18.dp))
+            Text("Leaving already?", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Not able to find what you're looking for? Turn on alerts and we'll let you know the moment a new property matching your search arrives.",
+                fontSize = 13.sp,
+                color = palette.muted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(KejaShapes.pill)
+                    .background(palette.bg)
+                    .clickable { dontAskAgain = !dontAskAgain }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Checkbox(checked = dontAskAgain, onCheckedChange = { dontAskAgain = it }, colors = CheckboxDefaults.colors(checkedColor = palette.primary))
+                Spacer(Modifier.width(4.dp))
+                Text("Don't ask me again", fontSize = 13.sp, color = palette.text)
+            }
+            Spacer(Modifier.height(20.dp))
+            KejaPrimaryButton(text = "Adjust notifications", onClick = onAdjustNotifications, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = onExitNow, modifier = Modifier.fillMaxWidth()) {
+                Text("Exit anyway", color = palette.muted, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** The "adjust notifications" dialog: location, price range, and an optional
+ * landlord name. Saved to /properties/alerts/me on the backend; a new
+ * property matching these filters notifies the renter (see
+ * notify_service.notify_matching_alerts). */
+@Composable
+private fun AlertPreferencesDialog(onClose: () -> Unit) {
+    val context = LocalContext.current
+    val repo = remember { AppContainer.repository(context) }
+    val scope = rememberCoroutineScope()
+
+    var location by remember { mutableStateOf("") }
+    var minPrice by remember { mutableStateOf("") }
+    var maxPrice by remember { mutableStateOf("") }
+    var landlordName by remember { mutableStateOf("") }
+    var loaded by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val existing = runCatching { repo.getMyAlert() }.getOrNull()
+        if (existing != null) {
+            location = existing.location ?: ""
+            minPrice = existing.min_price?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
+            maxPrice = existing.max_price?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString() } ?: ""
+            landlordName = existing.landlord_name ?: ""
+        }
+        loaded = true
+    }
+
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Alert me about new properties") },
+        text = {
+            if (!loaded) {
+                Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader(size = 32.dp) }
+            } else {
+                Column {
+                    Text("Leave anything blank to match everything.", fontSize = 12.sp, color = Color.Gray)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(location, { location = it }, label = { Text("Location (area or county)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(minPrice, { minPrice = it.filter(Char::isDigit) }, label = { Text("Min price") }, singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(maxPrice, { maxPrice = it.filter(Char::isDigit) }, label = { Text("Max price") }, singleLine = true, modifier = Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(landlordName, { landlordName = it }, label = { Text("A certain landlord (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = loaded && !saving,
+                onClick = {
+                    saving = true
+                    scope.launch {
+                        runCatching {
+                            repo.setMyAlert(
+                                com.keja.app.data.model.PropertyAlertDto(
+                                    location = location.trim().ifBlank { null },
+                                    min_price = minPrice.toDoubleOrNull(),
+                                    max_price = maxPrice.toDoubleOrNull(),
+                                    landlord_name = landlordName.trim().ifBlank { null },
+                                )
+                            )
+                        }
+                        android.widget.Toast.makeText(context, "We'll alert you when a match comes up", android.widget.Toast.LENGTH_SHORT).show()
+                        saving = false
+                        onClose()
+                    }
+                },
+            ) { Text(if (saving) "Saving…" else "Save alert") }
+        },
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+    )
+}
