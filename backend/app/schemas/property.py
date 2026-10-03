@@ -24,6 +24,24 @@ def _clean_amenities(value):
     return out
 
 
+def _no_markup(value):
+    """Short free-text listing fields are plain text. Rejecting angle
+    brackets server-side means a hostile landlord can't store HTML/script
+    in a field some client might one day forget to escape."""
+    if value is None:
+        return value
+    v = str(value).strip()
+    if "<" in v or ">" in v:
+        raise ValueError("Angle brackets are not allowed in this field")
+    return v
+
+
+def _bounded(v, lo, hi, what):
+    if v is not None and not (lo <= v <= hi):
+        raise ValueError(f"{what} is out of range")
+    return v
+
+
 class PropertyImageRead(BaseModel):
     id: UUID
     url: str
@@ -50,6 +68,39 @@ class PropertyCreate(BaseModel):
     proximity_note: Optional[str] = None
     amenities: List[str] = Field(default_factory=list)
 
+    @field_validator("title", "property_type", "county", "area", "proximity_note", mode="before", check_fields=False)
+    @classmethod
+    def _v_plain(cls, v):
+        v = _no_markup(v)
+        if isinstance(v, str) and len(v) > 160:
+            raise ValueError("Too long (160 characters max)")
+        return v
+
+    @field_validator("listing_type", mode="before", check_fields=False)
+    @classmethod
+    def _v_listing(cls, v):
+        if v is not None and str(v).strip().lower() not in ("rent", "sale"):
+            raise ValueError("listing_type must be 'rent' or 'sale'")
+        return None if v is None else str(v).strip().lower()
+
+    @field_validator("price", "agent_fee", mode="after", check_fields=False)
+    @classmethod
+    def _v_money(cls, v):
+        return _bounded(v, 0, 1_000_000_000, "Amount")
+
+    @field_validator("bedrooms", "bathrooms", mode="after", check_fields=False)
+    @classmethod
+    def _v_rooms(cls, v):
+        return _bounded(v, 0, 100, "Room count")
+
+    @field_validator("description", mode="after", check_fields=False)
+    @classmethod
+    def _v_desc(cls, v):
+        if v is not None and len(v) > 5000:
+            raise ValueError("Description too long (5000 characters max)")
+        return v
+
+
     @field_validator("amenities", mode="before")
     @classmethod
     def _v_amenities(cls, v):
@@ -71,6 +122,39 @@ class PropertyUpdate(BaseModel):
     is_available: Optional[bool] = None
     is_booked: Optional[bool] = None
     amenities: Optional[List[str]] = None
+
+    @field_validator("title", "property_type", "county", "area", "proximity_note", mode="before", check_fields=False)
+    @classmethod
+    def _v_plain(cls, v):
+        v = _no_markup(v)
+        if isinstance(v, str) and len(v) > 160:
+            raise ValueError("Too long (160 characters max)")
+        return v
+
+    @field_validator("listing_type", mode="before", check_fields=False)
+    @classmethod
+    def _v_listing(cls, v):
+        if v is not None and str(v).strip().lower() not in ("rent", "sale"):
+            raise ValueError("listing_type must be 'rent' or 'sale'")
+        return None if v is None else str(v).strip().lower()
+
+    @field_validator("price", "agent_fee", mode="after", check_fields=False)
+    @classmethod
+    def _v_money(cls, v):
+        return _bounded(v, 0, 1_000_000_000, "Amount")
+
+    @field_validator("bedrooms", "bathrooms", mode="after", check_fields=False)
+    @classmethod
+    def _v_rooms(cls, v):
+        return _bounded(v, 0, 100, "Room count")
+
+    @field_validator("description", mode="after", check_fields=False)
+    @classmethod
+    def _v_desc(cls, v):
+        if v is not None and len(v) > 5000:
+            raise ValueError("Description too long (5000 characters max)")
+        return v
+
 
     @field_validator("amenities", mode="before")
     @classmethod

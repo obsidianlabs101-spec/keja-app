@@ -178,9 +178,9 @@ let homeListingType = null, discoverListingType = null;
 
 function propertyCard(p) {
   return `<article class="property" data-property="${p.id}">
- <img src="${mediaUrl(p.main_image_url)}" alt="${p.property_type} in ${p.area || p.county}">
+ <img src="${mediaUrl(p.main_image_url)}" alt="${escHtml(p.property_type)} in ${escHtml(p.area || p.county)}">
  <div class="property-body"><div class="price">${money(p.price)}<span class="muted" style="font-size:12px;font-weight:500"> ${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}
- <div class="meta">${p.property_type} · ${p.area || p.county}</div>${p.proximity_note ? `<div class="tag">${p.proximity_note}</div>` : ""}${p.is_booked ? `<div class="tag" style="background:#FFF0F0;color:#C92D2D;margin-left:6px">Booked</div>` : ""}</div></article>`;
+ <div class="meta">${escHtml(p.property_type)} · ${escHtml(p.area || p.county)}</div>${p.proximity_note ? `<div class="tag">${escHtml(p.proximity_note)}</div>` : ""}${p.is_booked ? `<div class="tag" style="background:#FFF0F0;color:#C92D2D;margin-left:6px">Booked</div>` : ""}</div></article>`;
 }
 function bindCards() {
   document.querySelectorAll("[data-property]").forEach(el => el.onclick = () => openProperty(el.dataset.property));
@@ -275,10 +275,10 @@ function discover() {
     scroller.innerHTML = list.map(x => {
       const imgs = (x.images && x.images.length) ? x.images.slice().sort((a, b) => a.sort_order - b.sort_order).map(i => i.url) : [x.main_image_url];
       return `<article class="swipe-card" data-id="${x.id}" data-landlord="${x.landlord_id}">
-   <div class="swipe-gallery">${imgs.map(u => `<img src="${mediaUrl(u)}" alt="${x.property_type} in ${x.area || x.county}">`).join("")}</div>
+   <div class="swipe-gallery">${imgs.map(u => `<img src="${mediaUrl(u)}" alt="${escHtml(x.property_type)} in ${escHtml(x.area || x.county)}">`).join("")}</div>
    <div class="gradient"></div>
    ${imgs.length > 1 ? `<div class="gallery-dots">${imgs.map((_, i) => `<span class="dot${i === 0 ? " active" : ""}"></span>`).join("")}</div>` : ""}
-   <div class="swipe-info"><div class="price">${money(x.price)}${x.listing_type === "sale" ? ' <span style="font-size:12px;font-weight:500">for sale</span>' : ""}</div><div class="meta">${x.property_type} · ${x.area || x.county}</div>${x.proximity_note ? `<div style="margin-top:9px">${x.proximity_note}</div>` : ""}</div>
+   <div class="swipe-info"><div class="price">${money(x.price)}${x.listing_type === "sale" ? ' <span style="font-size:12px;font-weight:500">for sale</span>' : ""}</div><div class="meta">${escHtml(x.property_type)} · ${escHtml(x.area || x.county)}</div>${x.proximity_note ? `<div style="margin-top:9px">${escHtml(x.proximity_note)}</div>` : ""}</div>
    <div class="discover-fab-stack">
      <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
      <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
@@ -433,7 +433,7 @@ function profile() {
   const signedIn = isLoggedIn() && currentUser;
   const initials = signedIn ? (currentUser.name || currentUser.username || "SM").trim().slice(0, 2).toUpperCase() : "SM";
   const roleLabel = signedIn ? (currentUser.is_admin ? "Admin" : currentUser.is_host ? "Landlord" : "Renter") : "Guest";
-  app.innerHTML = `<section class="profile-head"><div class="big-avatar">${initials}</div><div><h2 style="margin:0">${signedIn ? (currentUser.name || currentUser.username) : "Your profile"}</h2><p class="muted" style="margin:6px 0"><span class="role-badge">${roleLabel}</span></p></div></section>
+  app.innerHTML = `<section class="profile-head"><div class="big-avatar">${initials}</div><div><h2 style="margin:0">${signedIn ? escHtml(currentUser.name || currentUser.username) : "Your profile"}</h2><p class="muted" style="margin:6px 0"><span class="role-badge">${roleLabel}</span></p></div></section>
  <div class="panel"><strong id="profInterestedCount">${interestedIds.size || "…"}</strong><div class="muted">Interested properties</div></div>
  ${signedIn && (currentUser.is_host || currentUser.is_admin) ? `<div class="section-head"><h2>Your workspace</h2></div><div class="settings-list"><div class="setting"><div><strong>${currentUser.is_admin ? "Admin dashboard" : "Landlord dashboard"}</strong><div class="muted">${currentUser.is_admin ? "Platform management" : "Manage listings and activity"}</div></div><button class="chip" id="dashBtn">Open</button></div></div>` : ""}
  ${signedIn && !currentUser.is_host && !currentUser.is_admin ? `<div class="section-head"><h2>Your workspace</h2></div><div class="settings-list"><div class="setting"><div><strong>Become a landlord</strong><div class="muted">List your own properties on Keja</div></div><button class="chip" id="landlordDashBtn">Get started</button></div></div>` : ""}
@@ -444,7 +444,7 @@ function profile() {
  </div>
  <div class="settings-list" style="margin-top:12px">
  <div class="setting"><div><strong>Dark mode</strong><div class="muted">Same layout, easier on the eyes at night</div></div><button class="switch ${dark ? "on" : ""}" id="darkSwitch"><span></span></button></div>
- <div class="setting"><div><strong>Account</strong><div class="muted">${signedIn ? "Signed in as " + (currentUser.email || currentUser.username) : "Log in or create your Keja account"}</div></div><button class="chip" id="loginBtn">${signedIn ? "Log out" : "Log in"}</button></div>
+ <div class="setting"><div><strong>Account</strong><div class="muted">${signedIn ? "Signed in as " + escHtml(currentUser.email || currentUser.username) : "Log in or create your Keja account"}</div></div><button class="chip" id="loginBtn">${signedIn ? "Log out" : "Log in"}</button></div>
  ${signedIn ? `<div class="setting" style="margin-top:10px"><div><strong>Switch account</strong><div class="muted">Log in as someone else without losing this session first</div></div><button class="chip" id="switchAccountBtn">Switch</button></div>` : ""}
  </div>`;
   document.getElementById("darkSwitch").onclick = toggleDark;
@@ -554,7 +554,7 @@ function loadLandlordListings() {
     const count = document.getElementById("listingCount");
     if (!body) return;
     if (count) count.textContent = list.length + " active";
-    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${p.property_type}<br><span class="muted">${p.area || p.county}${p.proximity_note ? " · " + escHtml(p.proximity_note) : ""}</span>${p.review_status === "rejected" ? `<br><span class="muted" style="color:#ef4444">Rejected${p.review_note ? ": " + escHtml(p.review_note) : ""}</span>` : ""}</td><td>${money(p.price)}</td><td>👁 ${p.view_count}<br><span class="muted">✦ ${(p.amenities || []).length} amenities</span></td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button> <button class="chip amenBtn">Amenities</button> <button class="chip danger delBtn">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
+    body.innerHTML = list.length ? list.map(p => `<tr data-id="${p.id}"><td><img class="mini-img" src="${mediaUrl(p.main_image_url)}">${escHtml(p.property_type)}<br><span class="muted">${escHtml(p.area || p.county)}${p.proximity_note ? " · " + escHtml(p.proximity_note) : ""}</span>${p.review_status === "rejected" ? `<br><span class="muted" style="color:#ef4444">Rejected${p.review_note ? ": " + escHtml(p.review_note) : ""}</span>` : ""}</td><td>${money(p.price)}</td><td>👁 ${p.view_count}<br><span class="muted">✦ ${(p.amenities || []).length} amenities</span></td><td><span class="status ${p.is_booked ? "booked" : "available"}">${p.is_booked ? "Booked" : "Available"}</span></td><td><button class="chip toggleBookedBtn">${p.is_booked ? "Mark available" : "Mark booked"}</button> <button class="chip amenBtn">Amenities</button> <button class="chip danger delBtn">Delete</button></td></tr>`).join("") : `<tr><td colspan="5">No listings yet — add your first property.</td></tr>`;
     body.querySelectorAll("tr[data-id]").forEach(row => {
       const id = row.dataset.id;
       const amenBtn = row.querySelector(".amenBtn");
@@ -826,8 +826,8 @@ function openProperty(id) {
   document.getElementById("close").onclick = hideModal;
 
   api(`/properties/${id}`).then(p => {
-    modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${p.property_type}</h2><button class="close" id="close">×</button></div>
- <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button><div class="hero-overlay"><div class="landlord-chip" id="landlordChip"><div class="avatar-img fallback" style="width:38px;height:38px;max-height:none;border-radius:50%;font-size:16px">K</div><div><b>Landlord</b><small>View profile</small></div></div>${(p.amenities && p.amenities.length) ? `<div class="amenity-row">${amenityCards(p.amenities)}</div>` : ""}</div></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}<p><strong>${p.area || p.county}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
+    modal.innerHTML = `<div class="modal-head"><h2 style="margin:0">${escHtml(p.property_type)}</h2><button class="close" id="close">×</button></div>
+ <div class="hero-wrap"><img src="${mediaUrl(p.main_image_url)}" alt=""><button class="view-photos" id="viewPhotosBtn" type="button">⤢ Photos${photoList(p).length > 1 ? " (" + photoList(p).length + ")" : ""}</button><div class="hero-overlay"><div class="landlord-chip" id="landlordChip"><div class="avatar-img fallback" style="width:38px;height:38px;max-height:none;border-radius:50%;font-size:16px">K</div><div><b>Landlord</b><small>View profile</small></div></div>${(p.amenities && p.amenities.length) ? `<div class="amenity-row">${amenityCards(p.amenities)}</div>` : ""}</div></div><div style="padding-top:15px"><div class="price">${money(p.price)} <span class="muted" style="font-size:12px">${priceSuffixText(p)}</span></div>${agentFeeHtml(p)}<p><strong>${escHtml(p.area || p.county)}</strong>${p.proximity_note ? " · " + p.proximity_note : ""}</p><p class="muted">${p.description || ""}</p>
  <div id="contactArea"><button class="primary" style="width:100%;margin-top:8px" id="contactBtn">${p.is_booked ? "This property is booked" : "Get contact"}</button><p class="muted" style="font-size:11px;text-align:center">A KES 50 payment is matched first. The landlord's WhatsApp number is revealed after successful confirmation.</p></div></div>`;
     document.getElementById("close").onclick = hideModal;
     const contactBtn = document.getElementById("contactBtn");

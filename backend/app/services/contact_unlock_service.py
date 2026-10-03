@@ -70,11 +70,19 @@ def use_free_credit(db: Session, unlock: ContactUnlock, user) -> ContactUnlock:
     bypassing the M-Pesa manual-match flow entirely."""
     if unlock.status == "unlocked":
         return unlock
-    if (user.free_contact_credits or 0) <= 0:
+    # Atomic spend: a single conditional UPDATE, so N parallel requests that
+    # all read "1 credit" can't each decrement and each unlock a different
+    # property (the old read-check-then-write let one credit buy many).
+    from sqlalchemy import update
+    from app.models.user import User
+    spent = db.execute(
+        update(User)
+        .where(User.id == user.id, User.free_contact_credits > 0)
+        .values(free_contact_credits=User.free_contact_credits - 1)
+    )
+    if spent.rowcount == 0:
+        db.rollback()
         raise ValueError("No free contact credits available")
-
-    user.free_contact_credits = user.free_contact_credits - 1
-    db.add(user)
     _finalize_unlock(db, unlock, "FREE_REFERRAL_CREDIT")
     return unlock
 

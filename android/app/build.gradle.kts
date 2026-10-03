@@ -35,6 +35,10 @@ android {
 
     buildTypes {
         debug {
+            // The APK we publish is the "debug" variant; make sure it is NOT
+            // debuggable, otherwise anyone with a cable can `adb run-as` into
+            // the app's private storage (saved login token) or attach a debugger.
+            isDebuggable = false
             if (kejaKeystore != null) signingConfig = signingConfigs.getByName("keja")
         }
         release {

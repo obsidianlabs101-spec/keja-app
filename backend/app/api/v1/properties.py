@@ -263,7 +263,7 @@ def list_host_comments(
                 body=c.body,
                 created_at=c.created_at,
                 author_name=(author.full_name or author.username or "A renter") if author else "A renter",
-                author_avatar=author.profile_pic_url if author else None,
+                author_avatar=author.profile_picture if author else None,
                 is_mine=bool(current_user and current_user.id == c.user_id),
             )
         )
@@ -300,7 +300,7 @@ def set_my_host_comment(
         body=comment.body,
         created_at=comment.created_at,
         author_name=current_user.full_name or current_user.username or "You",
-        author_avatar=current_user.profile_pic_url,
+        author_avatar=current_user.profile_picture,
         is_mine=True,
     )
 
