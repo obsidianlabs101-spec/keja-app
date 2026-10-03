@@ -23,6 +23,14 @@ class UserLogin(BaseModel):
     password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class GoogleAuthRequest(BaseModel):
     # The raw ID token from Google's Sign-In JS library (response.credential
     # in the browser callback) — verified server-side before being trusted,

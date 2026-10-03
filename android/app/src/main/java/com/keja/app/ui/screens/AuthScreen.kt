@@ -45,15 +45,24 @@ fun AuthScreen(onAuthenticated: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var info by remember { mutableStateOf<String?>(null) }
+    var needsVerify by remember { mutableStateOf(false) }
 
     fun submit() {
         if (identifier.isBlank() || password.isBlank()) {
             error = "Enter your details to continue"
             return
         }
+        if (!isLoginMode && !identifier.contains("@")) {
+            error = "Please use a real email address — we'll send you a verification link."
+            return
+        }
         error = null
+        info = null
+        needsVerify = false
         loading = true
         scope.launch {
+            val wasSignup = !isLoginMode
             try {
                 val isEmail = identifier.contains("@")
                 val emailToUse = if (isEmail) identifier else identifier.filter { it.isDigit() } + "@keja.local"
@@ -71,7 +80,14 @@ fun AuthScreen(onAuthenticated: () -> Unit) {
                 repo.login(emailToUse, password)
                 onAuthenticated()
             } catch (e: ApiException) {
-                error = e.message
+                if ((e.message ?: "").contains("verify your email", ignoreCase = true)) {
+                    // Not an error: the account exists, it just needs the email link clicked.
+                    needsVerify = true
+                    isLoginMode = true
+                    info = if (wasSignup) "Account created! We emailed you a verification link — tap it, then log in here. (Check spam too.)" else e.message
+                } else {
+                    error = e.message
+                }
             } catch (e: Exception) {
                 error = "Couldn't connect — check your internet connection"
             } finally {
@@ -164,6 +180,19 @@ fun AuthScreen(onAuthenticated: () -> Unit) {
                 error?.let {
                     Spacer(Modifier.height(10.dp))
                     Text(it, color = Color(0xFFEF4444), fontSize = 13.sp)
+                }
+                info?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Text(it, color = palette.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                if (needsVerify && identifier.contains("@")) {
+                    TextButton(onClick = {
+                        scope.launch {
+                            runCatching { repo.resendVerification(identifier.trim()) }
+                                .onSuccess { info = "New link sent — check your inbox (and spam)." }
+                                .onFailure { error = "Couldn't resend right now. Try again in a minute." }
+                        }
+                    }) { Text("Resend link") }
                 }
 
                 Spacer(Modifier.height(20.dp))

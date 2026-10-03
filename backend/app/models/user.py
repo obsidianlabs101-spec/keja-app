@@ -302,6 +302,16 @@ class User(Base):
         default=True
     )
 
+    # True only for a brand-new password signup whose email link hasn't been
+    # clicked yet. Deliberately a "pending" flag (default False) rather than
+    # "verified" (default False) so every account that existed before email
+    # verification shipped is NOT locked out by the schema upgrade.
+    email_pending_verification = Column(
+        Boolean,
+        default=False,
+        nullable=True
+    )
+
     # Bumped by /users/me/logout-all-sessions (and anywhere else that should
     # kill existing sessions, e.g. a future password-change endpoint). Every
     # JWT embeds the token_version it was issued with; get_current_user

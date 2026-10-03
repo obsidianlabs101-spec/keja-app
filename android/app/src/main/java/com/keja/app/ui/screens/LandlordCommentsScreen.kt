@@ -87,7 +87,7 @@ fun LandlordCommentsScreen(onBack: () -> Unit) {
                             Text("No comments yet", fontWeight = FontWeight.Bold, color = palette.text)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Renters can leave one comment on your profile after viewing your listings.",
+                                "Any signed-in renter can leave one comment on your profile (they can edit or delete it later).",
                                 fontSize = 12.sp, color = palette.muted,
                             )
                         }

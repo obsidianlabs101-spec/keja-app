@@ -11,6 +11,9 @@ interface KejaApi {
     @POST("register")
     suspend fun register(@Body body: RegisterRequest): Response<ResponseBody>
 
+    @POST("resend-verification")
+    suspend fun resendVerification(@Body body: ResendVerificationRequest): Response<ResponseBody>
+
     @POST("login")
     suspend fun login(@Body body: LoginRequest): Response<TokenResponse>
 

@@ -110,6 +110,23 @@ class Settings:
     # in-memory store (see limiter.py).
     VALKEY_URL = os.getenv("VALKEY_URL", "")
 
+    # --- Transactional email (verification links) ---------------------------
+    # Free options, both over HTTPS (Render's free tier blocks SMTP ports, so
+    # plain Gmail SMTP will NOT work there):
+    #   1) Gmail API  -> GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN / GMAIL_SENDER
+    #   2) Brevo API  -> BREVO_API_KEY / BREVO_SENDER_EMAIL   (300 emails/day free)
+    # If neither is configured, email verification is simply switched off
+    # (new accounts work immediately) so a missing env var can't lock anyone out.
+    GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID", "")
+    GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
+    GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN", "")
+    GMAIL_SENDER = os.getenv("GMAIL_SENDER", "")
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+    BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "")
+    # Where the link in the email points (the website, which verifies and
+    # then tells the person to go back to the app / log in).
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://keja-frontend.onrender.com").rstrip("/")
+
     # M-Pesa (for later)
     MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY")
     MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET")

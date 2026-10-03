@@ -390,7 +390,7 @@ function landlordCommentsPage() {
     if (sub) sub.textContent = list.length ? `${list.length} ${list.length === 1 ? "renter has" : "renters have"} commented on your profile.` : "What renters say about you will appear here.";
     body.innerHTML = list.length
       ? list.map(c => `<div class="host-comment"><div class="hc-top">${avatarHtml(c.author_avatar, c.author_name, 34)}<div><strong>${escHtml(c.author_name)}</strong><div class="muted" style="font-size:11px">${timeAgo(c.created_at)}</div></div></div><p>${escHtml(c.body)}</p></div>`).join("")
-      : `<div class="empty"><h3>No comments yet</h3><p class="muted">Renters can leave one comment on your profile after viewing your listings.</p></div>`;
+      : `<div class="empty"><h3>No comments yet</h3><p class="muted">Any signed-in renter can leave one comment on your profile (they can edit or delete it later).</p></div>`;
   }).catch(() => {
     const body = document.getElementById("lcBody");
     if (body) { body.innerHTML = `<div class="empty"><h3>Couldn't load your comments</h3><button class="primary" id="lcRetry" style="margin-top:14px">Retry</button></div>`; document.getElementById("lcRetry").onclick = landlordCommentsPage; }
@@ -1081,8 +1081,13 @@ function openLogin() {
     submitBtn.disabled = true; submitBtn.textContent = "Please wait…";
     try {
       const isEmail = id.includes("@");
+      if (mode === "signup" && !isEmail) {
+        if (errEl) errEl.textContent = "Please use a real email address — we'll send you a verification link.";
+        submitBtn.disabled = false; submitBtn.textContent = "Create account";
+        return;
+      }
       if (mode === "signup") {
-        await api("/register", {
+        const reg = await api("/register", {
           method: "POST",
           body: JSON.stringify({
             full_name: (nameEl && nameEl.value.trim()) || id,
@@ -1092,6 +1097,13 @@ function openLogin() {
             password: pass,
           }),
         });
+        if (reg && reg.verification_required) {
+          mode = "login"; draw();
+          const e2 = document.getElementById("authError");
+          if (e2) { e2.style.color = "var(--primary, #6C4DFF)"; e2.textContent = "Account created! We emailed you a verification link — click it, then log in here. (Check spam too.)"; }
+          const idEl = document.getElementById("authId"); if (idEl) idEl.value = id;
+          return;
+        }
       }
       const loginRes = await api("/login", {
         method: "POST",
@@ -1106,7 +1118,16 @@ function openLogin() {
       goto(me.is_admin ? "admin" : me.is_host ? "landlord" : "home");
       toast(`Welcome${me.name ? ", " + me.name.split(" ")[0] : ""}!`);
     } catch (e) {
-      if (errEl) errEl.textContent = e.message || "Something went wrong";
+      if (errEl) {
+        errEl.style.color = "";
+        errEl.textContent = e.message || "Something went wrong";
+        if (/verify your email/i.test(e.message || "") && id.includes("@")) {
+          const b = document.createElement("button");
+          b.className = "chip"; b.type = "button"; b.style.marginLeft = "8px"; b.textContent = "Resend link";
+          b.onclick = async () => { b.disabled = true; try { await api("/resend-verification", { method: "POST", body: JSON.stringify({ email: id }) }); toast("New link sent — check your inbox"); } catch (x) { toast(x.message || "Couldn't resend"); } };
+          errEl.appendChild(b);
+        }
+      }
     } finally {
       submitBtn.disabled = false; submitBtn.textContent = mode === "login" ? "Log in" : "Create account";
     }
@@ -1297,5 +1318,15 @@ if (window.visualViewport) {
 
 /* ---------------- Boot ---------------- */
 updateAvatar();
+// Email verification landing: the link in the email opens /?verify=<token>.
+(function handleVerifyLink() {
+  const t = new URLSearchParams(location.search).get("verify");
+  if (!t) return;
+  history.replaceState(null, "", location.pathname);
+  api("/verify-email", { method: "POST", body: JSON.stringify({ token: t }) })
+    .then(() => { toast("Email verified! You can log in now."); setTimeout(() => openLogin(), 400); })
+    .catch(e => toast(e.message || "That link is invalid or expired"));
+})();
+
 render();
 if (isLoggedIn()) refreshCurrentUser().then(() => { if (currentView === "profile" || currentView === "landlord" || currentView === "admin") render(); });

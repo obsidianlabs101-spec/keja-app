@@ -46,6 +46,8 @@ class KejaRepository(private val sessionStore: SessionStore) {
 
     suspend fun register(body: RegisterRequest) = unwrap(api.register(body))
 
+    suspend fun resendVerification(email: String) = unwrap(api.resendVerification(ResendVerificationRequest(email)))
+
     suspend fun login(email: String, password: String): TokenResponse {
         val token = unwrap(api.login(LoginRequest(email, password)))
         // Save token first so the immediate /users/me call below can use it.

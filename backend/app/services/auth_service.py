@@ -95,6 +95,17 @@ def authenticate_or_create_google_user(
 
     existing = get_user_by_email(db, email)
     if existing:
+        if getattr(existing, "email_pending_verification", False):
+            # Someone signed up with this address with a password but never
+            # proved they own it, and now the real owner has proven it via
+            # Google. Whoever knows that password is not the owner: replace
+            # it and kill any session they may already hold.
+            existing.email_pending_verification = False
+            existing.password_hash = hash_password(secrets.token_urlsafe(32))
+            existing.token_version = (existing.token_version or 0) + 1
+            db.add(existing)
+            db.commit()
+            db.refresh(existing)
         return existing, False
 
     username = _generate_unique_username_from_name(db, name or email.split("@")[0])
@@ -205,7 +216,8 @@ def _credit_referrer_if_any(db: Session, ref_code: str | None, new_user: User) -
 
 def create_user(
     db: Session,
-    user: UserRegister
+    user: UserRegister,
+    pending_verification: bool = False,
 ):
 
     db_user = User(
@@ -217,6 +229,7 @@ def create_user(
             user.password
         )
     )
+    db_user.email_pending_verification = bool(pending_verification)
     db_user.referral_code = _generate_referral_code(db, user.username)
 
     # Free-events padlock + referral credit: whoever's referral link this
@@ -233,10 +246,36 @@ def create_user(
     db.commit()
     db.refresh(db_user)
 
-    _credit_referrer_if_any(db, ref_code, db_user)
+    if pending_verification:
+        # Don't pay the referrer yet — a throwaway signup with a fake email
+        # must not mint free credits. Just remember who referred them; the
+        # credit is applied when the email link is clicked (confirm_email).
+        _ref = (ref_code or "").strip()
+        if _ref:
+            _referrer = db.query(User).filter(User.referral_code == _ref).first()
+            if _referrer and _referrer.id != db_user.id:
+                db_user.referred_by_user_id = _referrer.id
+                db.add(db_user)
+    else:
+        _credit_referrer_if_any(db, ref_code, db_user)
     db.commit()
 
     return db_user
+
+
+def confirm_email(db: Session, user: User) -> bool:
+    """Marks the email verified. Returns True if this call did it (False if
+    it was already verified). Pays the referrer now, once."""
+    if not user.email_pending_verification:
+        return False
+    user.email_pending_verification = False
+    db.add(user)
+    if user.referred_by_user_id:
+        referrer = db.query(User).filter(User.id == user.referred_by_user_id).first()
+        if referrer and referrer.referral_code:
+            _credit_referrer_if_any(db, referrer.referral_code, user)
+    db.commit()
+    return True
 
 
 def update_host_verification(

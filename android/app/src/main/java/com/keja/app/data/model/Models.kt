@@ -62,6 +62,8 @@ data class User(
 )
 
 data class LoginRequest(val email: String, val password: String)
+data class ResendVerificationRequest(val email: String)
+
 data class RegisterRequest(
     val full_name: String,
     val username: String,
