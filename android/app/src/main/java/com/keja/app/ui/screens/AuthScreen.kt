@@ -205,11 +205,17 @@ fun AuthScreen(onAuthenticated: () -> Unit) {
             }
 
             Spacer(Modifier.height(18.dp))
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
             Text(
-                "By continuing, you agree to Keja's terms and privacy policy.",
+                "By continuing, you agree to Keja's",
                 fontSize = 11.sp, color = palette.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { runCatching { uriHandler.openUri("https://keja-frontend.onrender.com/terms.html") } }) { Text("Terms & Conditions", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                Text("and", fontSize = 11.sp, color = palette.muted)
+                TextButton(onClick = { runCatching { uriHandler.openUri("https://keja-frontend.onrender.com/privacy.html") } }) { Text("Privacy Policy", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            }
             Spacer(Modifier.height(24.dp))
         }
     }

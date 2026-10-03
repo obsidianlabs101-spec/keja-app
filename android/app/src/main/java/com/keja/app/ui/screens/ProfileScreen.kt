@@ -354,6 +354,58 @@ fun ProfileScreen(
             },
         )
 
+        Spacer(Modifier.height(22.dp))
+        SectionLabel("Legal & help")
+        Spacer(Modifier.height(10.dp))
+        val legalUri = androidx.compose.ui.platform.LocalUriHandler.current
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Terms & Conditions",
+            subtitle = "Opens in your browser",
+            actionLabel = "Read",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/terms.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Privacy Policy",
+            subtitle = "Opens in your browser",
+            actionLabel = "Read",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/privacy.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Community rules",
+            subtitle = "Opens in your browser",
+            actionLabel = "Read",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/listing-rules.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Payments & refunds",
+            subtitle = "Opens in your browser",
+            actionLabel = "Read",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/payments-refunds.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Safety tips",
+            subtitle = "Opens in your browser",
+            actionLabel = "Read",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/safety-tips.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
+        SettingRow(
+            icon = Icons.Outlined.SystemUpdate,
+            title = "Delete my data",
+            subtitle = "Opens in your browser",
+            actionLabel = "How",
+            onClick = { runCatching { legalUri.openUri("https://keja-frontend.onrender.com/data-deletion.html") } },
+        )
+        Spacer(Modifier.height(8.dp))
         Spacer(Modifier.height(28.dp))
 
         // Small brand footer — a quiet signature rather than another action.

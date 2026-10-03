@@ -478,7 +478,8 @@ function profile() {
  <div class="setting"><div><strong>Dark mode</strong><div class="muted">Same layout, easier on the eyes at night</div></div><button class="switch ${dark ? "on" : ""}" id="darkSwitch"><span></span></button></div>
  <div class="setting"><div><strong>Account</strong><div class="muted">${signedIn ? "Signed in as " + escHtml(currentUser.email || currentUser.username) : "Log in or create your Keja account"}</div></div><button class="chip" id="loginBtn">${signedIn ? "Log out" : "Log in"}</button></div>
  ${signedIn ? `<div class="setting" style="margin-top:10px"><div><strong>Switch account</strong><div class="muted">Log in as someone else without losing this session first</div></div><button class="chip" id="switchAccountBtn">Switch</button></div>` : ""}
- </div>`;
+ </div>
+ <div class="section-head"><h2>Legal &amp; help</h2></div><div class="settings-list"><div class="setting" style="display:block;line-height:2"><a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="listing-rules.html" target="_blank" rel="noopener">Community Rules</a><br><a href="payments-refunds.html" target="_blank" rel="noopener">Payments &amp; Refunds</a> · <a href="safety-tips.html" target="_blank" rel="noopener">Safety Tips</a> · <a href="data-deletion.html" target="_blank" rel="noopener">Delete my data</a></div></div>`;
   document.getElementById("darkSwitch").onclick = toggleDark;
   document.querySelectorAll(".theme-card").forEach(b => b.onclick = () => setTheme(b.dataset.theme));
   const dash = document.getElementById("dashBtn"); if (dash) dash.onclick = () => goto(currentUser.is_admin ? "admin" : "landlord");
@@ -1176,7 +1177,7 @@ function openLogin() {
   <p class="muted" id="authError" style="font-size:12px;min-height:14px;text-align:center"></p>
   <button class="primary" style="width:100%;margin-top:16px" id="loginSubmit">${mode === "login" ? "Log in" : "Create account"}</button>
   <a class="chip" href="keja.apk" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;text-decoration:none;box-sizing:border-box">Download Android app</a>
-  <p class="auth-note">By continuing, you agree to Keja's terms and privacy policy. Landlords: request landlord access from your profile after signing up.</p></div>`;
+  <p class="auth-note">By continuing, you agree to Keja's <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. Landlords: request landlord access from your profile after signing up.</p></div>`;
     document.getElementById("close").onclick = hideModal;
     modal.querySelectorAll(".auth-tabs button").forEach(b => b.onclick = () => { mode = b.dataset.mode; draw(); });
     document.getElementById("loginSubmit").onclick = submit;
