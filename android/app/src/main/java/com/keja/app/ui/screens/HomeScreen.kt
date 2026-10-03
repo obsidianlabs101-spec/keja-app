@@ -49,12 +49,14 @@ import kotlinx.coroutines.launch
  * Shared so Home's Shops filter and Discover both agree on what counts. */
 val COMMERCIAL_TYPES = setOf("Shop", "Office", "Warehouse", "Commercial")
 
-fun propertyCategoryOf(p: Property): String = when {
-    p.property_type == "Airbnb" -> "airbnb"
-    p.property_type == "Hostel" -> "hostels"
-    p.property_type in COMMERCIAL_TYPES -> "commercial"
+fun categoryOfType(type: String): String = when {
+    type == "Airbnb" -> "airbnb"
+    type == "Hostel" -> "hostels"
+    type in COMMERCIAL_TYPES -> "commercial"
     else -> "apartments"
 }
+
+fun propertyCategoryOf(p: Property): String = categoryOfType(p.property_type)
 
 @Composable
 fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) {
@@ -127,7 +129,7 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
         val byType = runCatching { repo.categoryCounts(selectedListingType) }.getOrDefault(emptyMap())
         val folded = mutableMapOf("apartments" to 0, "hostels" to 0, "airbnb" to 0, "commercial" to 0)
         byType.forEach { (t, n) ->
-            val key = propertyCategoryOf(Property(id = "", landlord_id = "", title = "", description = null, price = 0.0, property_type = t, bedrooms = null, bathrooms = null, county = "", area = null, proximity_note = null, main_image_url = null, is_available = true, is_booked = false, view_count = 0, created_at = null))
+            val key = categoryOfType(t)
             folded[key] = (folded[key] ?: 0) + n
         }
         counts = folded
@@ -180,7 +182,51 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
                     Text("Fresh listings", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
                 }
                 Spacer(Modifier.height(10.dp))
-                if (!loading && displayedProperties.isEmpty()) {
+                if (loading) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 8.dp)) {
+                        items(3) { com.keja.app.ui.components.SkeletonCard() }
+                    }
+                } else if (displayedProperties.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 8.dp)) {
+                        rowItems(displayedProperties.take(8)) { p ->
+                            com.keja.app.ui.components.FreshCard(property = p, onClick = { onOpenProperty(p.id) })
+                        }
+                    }
+                }
+                Spacer(Modifier.height(18.dp))
+                CategoryRow(
+                    selected = selectedCategory,
+                    counts = counts,
+                    onSelect = { selectedCategory = if (selectedCategory == it) null else it },
+                )
+                Spacer(Modifier.height(18.dp))
+
+                // ---- Popular areas ----
+                Text("Popular areas", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+                Spacer(Modifier.height(10.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowItems(listOf("Kilimani", "Westlands", "Roysambu", "Lavington", "Kasarani", "Ruaka", "Juja")) { area ->
+                        Box(
+                            Modifier
+                                .clip(KejaShapes.pill)
+                                .background(palette.card)
+                                .border(1.dp, palette.border, KejaShapes.pill)
+                                .clickable { query = area; load(area) }
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                        ) { Text(area, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = palette.text) }
+                    }
+                }
+                Spacer(Modifier.height(18.dp))
+                com.keja.app.ui.components.AdBanner(placement = "home")
+                Spacer(Modifier.height(22.dp))
+                if (!loading && displayedProperties.size > 8) {
+                    Text("Recommended for you", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+
+        if (!loading && displayedProperties.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 EmptyHomeState(commercial = selectedCategory == "commercial", forSale = selectedListingType == "sale")
             }
