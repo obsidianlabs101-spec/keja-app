@@ -64,15 +64,19 @@ from fastapi.staticfiles import StaticFiles
 
 import os
 
-from app.api.v1.media import router as media_router
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from app.core.limiter import limiter
 
+# Interactive API docs / openapi.json hand an attacker a full map of every
+# endpoint; only expose them when DEBUG=true (local dev).
 app = FastAPI(
-    title="Keja API"
+    title="Keja API",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # RATE LIMITING — see app/core/limiter.py.
@@ -146,7 +150,6 @@ app.include_router(contact_unlock_router)
 app.include_router(ads_public_router)
 app.include_router(ads_admin_router)
 app.include_router(keja_admin_router)
-app.include_router(media_router)
 
 
 @app.get("/")
