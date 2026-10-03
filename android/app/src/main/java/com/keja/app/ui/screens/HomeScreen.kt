@@ -177,33 +177,14 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
                 )
                 Spacer(Modifier.height(18.dp))
 
-                // ---- Fresh listings (sideways row) ----
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Fresh listings", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
-                }
-                Spacer(Modifier.height(10.dp))
-                if (loading) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                        items(3) { com.keja.app.ui.components.SkeletonCard() }
-                    }
-                } else if (displayedProperties.isNotEmpty()) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                        rowItems(displayedProperties.take(8)) { p ->
-                            com.keja.app.ui.components.FreshCard(property = p, onClick = { onOpenProperty(p.id) })
-                        }
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
                 CategoryRow(
                     selected = selectedCategory,
                     counts = counts,
                     onSelect = { selectedCategory = if (selectedCategory == it) null else it },
                 )
-                Spacer(Modifier.height(18.dp))
-
-                // ---- Popular areas ----
-                Text("Popular areas", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
                 Spacer(Modifier.height(10.dp))
+
+                // ---- Popular areas (one tidy row, no heading — saves a screenful) ----
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     rowItems(listOf("Kilimani", "Westlands", "Roysambu", "Lavington", "Kasarani", "Ruaka", "Juja")) { area ->
                         Box(
@@ -212,26 +193,40 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
                                 .background(palette.card)
                                 .border(1.dp, palette.border, KejaShapes.pill)
                                 .clickable { query = area; load(area) }
-                                .padding(horizontal = 14.dp, vertical = 9.dp)
-                        ) { Text(area, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = palette.text) }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) { Text("\uD83D\uDCCD $area", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = palette.text) }
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                com.keja.app.ui.components.AdBanner(placement = "home")
-                Spacer(Modifier.height(22.dp))
-                if (!loading && displayedProperties.size > 8) {
-                    Text("Recommended for you", fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
-                    Spacer(Modifier.height(12.dp))
+
+                // ---- Headline that proves the app is full of places ----
+                val total = counts.values.sum()
+                val headline = when {
+                    loading -> "Finding places…"
+                    selectedCategory != null -> "${displayedProperties.size} ${when (selectedCategory) { "hostels" -> "hostels"; "airbnb" -> "Airbnb stays"; "commercial" -> "shops & spaces"; else -> "apartments" }}"
+                    total > 0 -> "$total places to explore"
+                    else -> "Latest listings"
                 }
+                Text(headline, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = palette.text)
+                Text("Newest first · tap a card to see photos, price and contact", fontSize = 12.sp, color = palette.muted)
+                Spacer(Modifier.height(4.dp))
             }
         }
 
-        if (!loading && displayedProperties.isEmpty()) {
+        if (loading) {
+            items(2) { com.keja.app.ui.components.SkeletonCard(wide = true) }
+        } else if (displayedProperties.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 EmptyHomeState(commercial = selectedCategory == "commercial", forSale = selectedListingType == "sale")
             }
-        } else if (!loading) {
-            items(displayedProperties.drop(8)) { p ->
+        } else {
+            items(displayedProperties.take(3)) { p ->
+                PropertyCard(property = p, onClick = { onOpenProperty(p.id) })
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                com.keja.app.ui.components.AdBanner(placement = "home")
+            }
+            items(displayedProperties.drop(3)) { p ->
                 PropertyCard(property = p, onClick = { onOpenProperty(p.id) })
             }
         }
@@ -355,62 +350,39 @@ private fun ListingTypePills(selected: String?, onSelect: (String) -> Unit) {
 private fun CategoryRow(selected: String?, counts: Map<String, Int>, onSelect: (String) -> Unit) {
     val palette = LocalKejaPalette.current
     val rangi = palette.style == com.keja.app.ui.theme.KejaThemeStyle.RANGI
-    // (key, icon, label, subtitle, Rangi colour)
+    // key, icon, label, Rangi colour
     val categories = listOf(
-        listOf("apartments", Icons.Outlined.Home, "Apartments", "Long-term homes", palette.sun),
-        listOf("hostels", Icons.Outlined.Apartment, "Hostels", "Student rooms", Color(0xFF38B6FF)),
-        listOf("airbnb", Icons.Outlined.AutoAwesome, "Airbnb", "Short stays", palette.mint),
-        listOf("commercial", Icons.Outlined.Storefront, "Shops", "Business spaces", palette.coral),
+        listOf("apartments", Icons.Outlined.Home, "Apartments", palette.sun),
+        listOf("hostels", Icons.Outlined.Apartment, "Hostels", Color(0xFF38B6FF)),
+        listOf("airbnb", Icons.Outlined.AutoAwesome, "Airbnb", palette.mint),
+        listOf("commercial", Icons.Outlined.Storefront, "Shops", palette.coral),
     )
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        categories.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                pair.forEach { c ->
-                    val key = c[0] as String
-                    val n = counts[key]
-                    CategoryCard(
-                        icon = c[1] as ImageVector,
-                        label = c[2] as String,
-                        sub = (if (n != null) "$n ${if (n == 1) "listing" else "listings"} · " else "") + (c[3] as String),
-                        active = selected == key,
-                        tint = if (rangi) c[4] as Color else null,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onSelect(key) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryCard(icon: ImageVector, label: String, sub: String, active: Boolean, tint: Color?, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val palette = LocalKejaPalette.current
-    val bg = when {
-        active -> palette.primary
-        tint != null -> tint
-        else -> palette.card
-    }
-    val fg = if (active) Color.White else if (tint != null) Color(0xFF1A1830) else palette.text
-    val subFg = if (active) Color.White.copy(alpha = 0.85f) else if (tint != null) Color(0xB81A1830) else palette.muted
-    com.keja.app.ui.components.ThemedCard(
-        modifier = modifier.padding(end = if (tint != null) 6.dp else 0.dp, bottom = if (tint != null) 7.dp else 0.dp),
-        onClick = onClick,
-    ) {
-        Row(
-            Modifier.fillMaxWidth().background(bg).padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (active) Color.White.copy(alpha = 0.22f) else if (tint != null) Color.White else palette.primaryLight),
-                contentAlignment = Alignment.Center,
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        rowItems(categories) { c ->
+            val key = c[0] as String
+            val active = selected == key
+            val n = counts[key] ?: 0
+            val bg = when { active -> palette.primary; rangi -> c[3] as Color; else -> palette.card }
+            val fg = when { active -> Color.White; rangi -> Color(0xFF1A1830); else -> palette.text }
+            Row(
+                Modifier
+                    .clip(KejaShapes.pill)
+                    .background(bg)
+                    .border(if (rangi) 2.dp else 1.dp, if (active) Color.Transparent else if (rangi) Color(0xFF1A1830) else palette.border, KejaShapes.pill)
+                    .clickable { onSelect(key) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(icon, contentDescription = null, tint = if (active) Color.White else if (tint != null) Color(0xFF1A1830) else palette.primary, modifier = Modifier.size(19.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(label, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = fg, maxLines = 1)
-                Text(sub, fontSize = 11.sp, color = subFg, maxLines = 2, lineHeight = 14.sp)
+                Icon(c[1] as ImageVector, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
+                Text(c[2] as String, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = fg, maxLines = 1)
+                // Never advertise an empty shelf: counts only appear when there is something to see.
+                if (n > 0) {
+                    Spacer(Modifier.width(7.dp))
+                    Box(
+                        Modifier.clip(CircleShape).background(if (active) Color.White.copy(alpha = 0.25f) else fg.copy(alpha = 0.12f)).padding(horizontal = 7.dp, vertical = 1.dp),
+                    ) { Text("$n", fontSize = 11.5.sp, fontWeight = FontWeight.ExtraBold, color = fg) }
+                }
             }
         }
     }

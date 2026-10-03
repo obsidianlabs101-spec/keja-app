@@ -209,16 +209,16 @@ fun FreshCard(property: Property, modifier: Modifier = Modifier, onClick: () -> 
 
 /** Grey shimmer-less placeholder shown while listings load (instead of a blank page / lone spinner). */
 @Composable
-fun SkeletonCard(modifier: Modifier = Modifier) {
+fun SkeletonCard(modifier: Modifier = Modifier, wide: Boolean = false) {
     val palette = LocalKejaPalette.current
     Column(
         modifier
-            .width(172.dp)
+            .then(if (wide) Modifier.fillMaxWidth() else Modifier.width(172.dp))
             .clip(KejaShapes.card)
             .background(palette.card)
             .border(1.dp, palette.border, KejaShapes.card)
     ) {
-        Box(Modifier.fillMaxWidth().height(118.dp).background(palette.primaryLight))
+        Box(Modifier.fillMaxWidth().height(if (wide) 200.dp else 118.dp).background(palette.primaryLight))
         Spacer(Modifier.height(10.dp))
         Box(Modifier.padding(horizontal = 11.dp).fillMaxWidth().height(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).background(palette.primaryLight))
         Spacer(Modifier.height(8.dp))

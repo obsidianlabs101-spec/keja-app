@@ -199,49 +199,57 @@ function bindCards() {
 }
 
 /* ---------------- Home ---------------- */
+const HOME_AREAS = ["Kilimani", "Westlands", "Roysambu", "Kasarani", "Kahawa", "Lavington", "Ruaka", "Juja"];
 function home() {
   app.innerHTML = `<section class="hero"><div class="eyebrow">WELCOME BACK 👋</div><h1>Find a place<br>you'll love.</h1><p>Apartments, hostels, Airbnb stays and shops — all in one place.</p>
  <div class="search"><span style="padding:12px">⌕</span><input id="searchInput" placeholder="Search location, type or landmark"><button id="searchBtn">Search</button></div></section>
  ${listingPillsHtml(homeListingType)}
- <div class="section-head"><h2>Fresh listings</h2><button class="chip" id="discoverBtn">See all</button></div>
- <div class="h-row" id="freshRow">${skelCards(3)}</div>
- <div class="category-grid">
-   <button class="category-card" data-cat="apartments"><span class="cat-icon">⌂</span><span class="cat-txt"><strong>Apartments</strong><small><b class="cat-count" data-c="apartments"></b>Long-term homes</small></span></button>
-   <button class="category-card" data-cat="hostels"><span class="cat-icon">▤</span><span class="cat-txt"><strong>Hostels</strong><small><b class="cat-count" data-c="hostels"></b>Student rooms</small></span></button>
-   <button class="category-card" data-cat="airbnb"><span class="cat-icon">✦</span><span class="cat-txt"><strong>Airbnb</strong><small><b class="cat-count" data-c="airbnb"></b>Short stays</small></span></button>
-   <button class="category-card" data-cat="commercial"><span class="cat-icon">▦</span><span class="cat-txt"><strong>Shops</strong><small><b class="cat-count" data-c="commercial"></b>Business spaces</small></span></button>
+ <div class="cat-chips">
+   <button class="cat-chip" data-cat="apartments"><span>⌂</span>Apartments<b class="cat-count" data-c="apartments" hidden></b></button>
+   <button class="cat-chip" data-cat="hostels"><span>▤</span>Hostels<b class="cat-count" data-c="hostels" hidden></b></button>
+   <button class="cat-chip" data-cat="airbnb"><span>✦</span>Airbnb<b class="cat-count" data-c="airbnb" hidden></b></button>
+   <button class="cat-chip" data-cat="commercial"><span>▦</span>Shops<b class="cat-count" data-c="commercial" hidden></b></button>
  </div>
- <div class="section-head"><h2>Popular areas</h2></div>${chips}
- <div class="ad" data-ad-slot="home"></div>
- <div id="recoWrap" hidden><div class="section-head"><h2>Recommended for you</h2></div><div class="grid" id="homeGrid"></div></div>`;
-  hydrateAds();
+ <div class="chips">${HOME_AREAS.map(a => `<button class="chip" data-area="${a}">📍 ${a}</button>`).join("")}</div>
+ <div class="home-head"><h2 id="homeHeadline">Finding places…</h2><div class="muted" style="font-size:12px">Newest first · tap a card to see photos, price and contact</div></div>
+ <div class="grid" id="homeGrid">${skelCards(3).replace(/class="skel-card"/g, 'class="skel-card wide"')}</div>`;
 
-  document.getElementById("discoverBtn").onclick = () => goto("discover");
   document.getElementById("searchBtn").onclick = () => search();
   document.getElementById("searchInput").onkeydown = e => { if (e.key === "Enter") search(); };
-  document.querySelectorAll(".category-card").forEach(b => b.onclick = () => categoryPage(b.dataset.cat));
+  document.querySelectorAll(".cat-chip").forEach(b => b.onclick = () => categoryPage(b.dataset.cat));
   document.querySelectorAll(".chips .chip").forEach(b => b.onclick = () => { document.getElementById("searchInput").value = b.dataset.area; search(); });
   document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = (b.dataset.lt === "all" || homeListingType === b.dataset.lt) ? null : b.dataset.lt; home(); });
 
   const lt = homeListingType ? "&listing_type=" + homeListingType : "";
+  let totalPlaces = 0;
+  const setHeadline = () => { const h = document.getElementById("homeHeadline"); if (h) h.textContent = totalPlaces > 0 ? `${totalPlaces} places to explore` : "Latest listings"; };
   api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : "")).then(byType => {
     const c = foldCategoryCounts(byType);
-    document.querySelectorAll(".cat-count").forEach(el => { const n = c[el.dataset.c] || 0; el.textContent = n + (n === 1 ? " listing · " : " listings · "); });
+    totalPlaces = Object.values(c).reduce((x, y) => x + y, 0);
+    // Never advertise an empty shelf: a count badge only appears when there is something to see.
+    document.querySelectorAll(".cat-count").forEach(el => { const n = c[el.dataset.c] || 0; if (n > 0) { el.textContent = n; el.hidden = false; } });
+    setHeadline();
   }).catch(() => {});
 
-  api("/properties/?limit=24" + lt).then(list => {
+  api("/properties/?limit=48" + lt).then(list => {
     properties = list;
-    const row = document.getElementById("freshRow");
-    if (!row) return; // user navigated away already
-    const emptyMsg = homeListingType === "sale" ? "Nothing for sale yet" : homeListingType === "rent" ? "Nothing for rent yet" : "No listings yet";
-    if (!list.length) { row.outerHTML = `<div class="empty"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`; return; }
-    row.innerHTML = list.slice(0, 8).map(freshCard).join("");
-    const rest = list.slice(8);
-    if (rest.length) { document.getElementById("homeGrid").innerHTML = rest.map(propertyCard).join(""); document.getElementById("recoWrap").hidden = false; }
+    const grid = document.getElementById("homeGrid");
+    if (!grid) return; // user navigated away already
+    if (!list.length) {
+      const emptyMsg = homeListingType === "sale" ? "Nothing for sale yet" : homeListingType === "rent" ? "Nothing for rent yet" : "No listings yet";
+      grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`;
+      return;
+    }
+    if (!totalPlaces) { totalPlaces = list.length; setHeadline(); }
+    // Big cards straight away; the ad sits after the 3rd card instead of pushing listings off-screen.
+    const cards = list.map(propertyCard);
+    cards.splice(Math.min(3, cards.length), 0, `<div class="ad" data-ad-slot="home" style="grid-column:1/-1"></div>`);
+    grid.innerHTML = cards.join("");
+    hydrateAds();
     bindCards();
   }).catch(() => {
-    const row = document.getElementById("freshRow");
-    if (row) row.outerHTML = `<div class="empty"><h3>Couldn't load listings</h3><button class="primary" id="homeRetry" style="margin-top:12px">Retry</button></div>`;
+    const grid = document.getElementById("homeGrid");
+    if (grid) grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>Couldn't load listings</h3><button class="primary" id="homeRetry" style="margin-top:12px">Retry</button></div>`;
     const r = document.getElementById("homeRetry"); if (r) r.onclick = home;
   });
 }

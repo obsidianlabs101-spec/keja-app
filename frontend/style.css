@@ -458,3 +458,23 @@ body.rangi.dark .category-card small,body.rangi.dark .cat-count{color:var(--mute
 .skel-line{height:12px;margin:10px 11px 0}.skel-line.short{width:55%}
 
 .lt-pill{padding:10px 0}
+
+/* ===== Home v2: listings first, compact category chips ===== */
+.cat-chips{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 8px;margin:4px -2px 2px;-webkit-overflow-scrolling:touch}
+.cat-chips::-webkit-scrollbar{display:none}
+.cat-chip{flex:none;display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:800;font-size:13.5px;white-space:nowrap}
+.cat-chip>span{font-size:16px;line-height:1}
+.cat-chip .cat-count{background:color-mix(in srgb,var(--text) 12%,transparent);border-radius:999px;padding:1px 8px;font-size:11.5px}
+.cat-chip .cat-count[hidden]{display:none}
+.cat-chip:hover{border-color:var(--primary)}
+body.rangi .cat-chip{border:2px solid var(--text);box-shadow:3px 4px 0 var(--text);margin-right:3px;color:#1A1830}
+body.rangi .cat-chip:nth-child(1){background:var(--sun)}
+body.rangi .cat-chip:nth-child(2){background:var(--sky)}
+body.rangi .cat-chip:nth-child(3){background:var(--mint)}
+body.rangi .cat-chip:nth-child(4){background:var(--coral)}
+body.rangi.dark .cat-chip{border-color:var(--border);box-shadow:3px 4px 0 var(--border)}
+.home-head{margin:14px 0 10px}
+.home-head h2{margin:0 0 2px;font-size:22px}
+.skel-card.wide{flex:none;width:auto}
+.skel-card.wide .skel-img{height:200px}
+.chips{margin:2px 0 4px}
