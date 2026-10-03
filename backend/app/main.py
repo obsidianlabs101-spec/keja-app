@@ -8,6 +8,7 @@ from app.api.v1.properties import router as property_router
 from app.api.v1.contact_unlock import router as contact_unlock_router
 from app.api.v1.keja_admin import router as keja_admin_router
 from app.api.v1.ads import public_router as ads_public_router, admin_router as ads_admin_router
+from app.api.v1.catalog import public_router as catalog_public_router, admin_router as catalog_admin_router
 
 from app.core.config import settings
 from app.core.database import Base
@@ -27,6 +28,7 @@ from app.models.user_block import UserBlock  # noqa: F401
 from app.models.admin_activity_log import AdminActivityLog  # noqa: F401
 from app.models.platform_settings import PlatformSettings  # noqa: F401
 from app.models.taxonomy_entry import TaxonomyEntry  # noqa: F401
+from app.models.catalog import HousingCategory, LocationKeyword  # noqa: F401
 
 from app.models.property import Property  # noqa: F401
 from app.models.property_image import PropertyImage  # noqa: F401
@@ -57,6 +59,19 @@ try:
 except Exception as e:
     print(f"⚠️ Schema upgrade notice: {e}")
     print(_boot_traceback.format_exc())
+
+# First boot only: fill the admin-editable category/location tables with what
+# Keja shipped with, so existing listings and Home chips look exactly the same.
+try:
+    from app.core.database import SessionLocal as _SessionLocal
+    from app.services import catalog_service as _catalog_service
+    _seed_db = _SessionLocal()
+    try:
+        _catalog_service.seed_defaults(_seed_db)
+    finally:
+        _seed_db.close()
+except Exception as e:
+    print(f"⚠️ Catalog seed notice: {e}")
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -145,11 +160,15 @@ if os.path.isdir("frontend"):
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(user_router)
+# Catalog lists (/properties/categories, /properties/locations) must be registered
+# BEFORE property_router, whose /properties/{property_id} would swallow them.
+app.include_router(catalog_public_router)
 app.include_router(property_router)
 app.include_router(contact_unlock_router)
 app.include_router(ads_public_router)
 app.include_router(ads_admin_router)
 app.include_router(keja_admin_router)
+app.include_router(catalog_admin_router)
 
 
 @app.get("/")
