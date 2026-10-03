@@ -28,6 +28,7 @@ data class Property(
     val amenities: List<String> = emptyList(),
     val review_status: String? = null,
     val review_note: String? = null,
+    val landlord_verified: Boolean = false,
     val listing_type: String = "rent",
     val agent_fee: Double? = null,
 )

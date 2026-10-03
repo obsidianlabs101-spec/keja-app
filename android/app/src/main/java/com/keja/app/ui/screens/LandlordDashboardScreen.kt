@@ -560,7 +560,7 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
     val repo = remember { AppContainer.repository(context) }
     val scope = rememberCoroutineScope()
 
-    var category by remember { mutableStateOf("apartments") } // apartments | airbnb | commercial
+    var category by remember { mutableStateOf("apartments") } // apartments | hostels | airbnb | commercial
     var subType by remember { mutableStateOf("Bedsitter") }
     var listingType by remember { mutableStateOf("rent") } // rent | sale
     var price by remember { mutableStateOf("") }
@@ -594,7 +594,7 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
         Text("Category", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         PickerPillRow(
-            options = listOf("apartments" to "Apartment", "airbnb" to "Airbnb", "commercial" to "Commercial / Shop"),
+            options = listOf("apartments" to "Apartment", "hostels" to "Hostel", "airbnb" to "Airbnb", "commercial" to "Commercial / Shop"),
             selected = category,
             onSelect = {
                 category = it
@@ -680,10 +680,10 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                     try {
                         val prop = repo.createProperty(
                             PropertyCreateRequest(
-                                title = "${if (category == "airbnb") "Airbnb" else subType} in $location",
+                                title = "${when (category) { "airbnb" -> "Airbnb"; "hostels" -> "Hostel"; else -> subType }} in $location",
                                 description = desc.ifBlank { null },
                                 price = priceValue,
-                                property_type = if (category == "airbnb") "Airbnb" else subType,
+                                property_type = when (category) { "airbnb" -> "Airbnb"; "hostels" -> "Hostel"; else -> subType },
                                 listing_type = listingType,
                                 agent_fee = agentFee.toDoubleOrNull()?.takeIf { it > 0 },
                                 bedrooms = null,

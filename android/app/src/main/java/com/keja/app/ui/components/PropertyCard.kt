@@ -133,6 +133,7 @@ fun PropertyCard(property: Property, modifier: Modifier = Modifier, onClick: () 
                     "${property.property_type} · ${property.area ?: property.county}",
                     fontSize = 13.sp, color = palette.muted,
                 )
+                if (property.landlord_verified) { VerifiedBadge() }
                 property.proximity_note?.let {
                     Spacer(Modifier.height(8.dp))
                     TagPill(it)
@@ -159,5 +160,69 @@ fun TagPill(text: String) {
 fun StatusPill(label: String, bg: androidx.compose.ui.graphics.Color, fg: androidx.compose.ui.graphics.Color) {
     Box(Modifier.clip(KejaShapes.pill).background(bg).padding(horizontal = 9.dp, vertical = 4.dp)) {
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, softWrap = false)
+    }
+}
+
+
+/** Small green "✓ Verified" pill shown on listings whose landlord passed ID verification. */
+@Composable
+fun VerifiedBadge(modifier: Modifier = Modifier) {
+    androidx.compose.material3.Text(
+        "✓ Verified",
+        modifier = modifier
+            .padding(top = 4.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
+            .background(androidx.compose.ui.graphics.Color(0xFFE6F9F1))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        color = androidx.compose.ui.graphics.Color(0xFF0E8A5B),
+        fontSize = 10.5.sp,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+    )
+}
+
+
+/** Compact card for the Home "Fresh listings" row: photo, price, type · area, verified badge. */
+@Composable
+fun FreshCard(property: Property, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val palette = LocalKejaPalette.current
+    val rangi = palette.style == KejaThemeStyle.RANGI
+    ThemedCard(modifier = modifier.width(172.dp).then(if (rangi) Modifier.padding(end = 6.dp, bottom = 7.dp) else Modifier), onClick = onClick) {
+        Column(Modifier.width(172.dp)) {
+            AsyncImage(
+                model = resolveMediaUrl(property.main_image_url),
+                contentDescription = property.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().height(118.dp),
+            )
+            Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                Text(formatKes(property.price), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = palette.text, maxLines = 1)
+                Text(
+                    "${property.property_type} · ${property.area ?: property.county}",
+                    fontSize = 12.sp, color = palette.muted, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                if (property.landlord_verified) { VerifiedBadge() }
+            }
+        }
+    }
+}
+
+/** Grey shimmer-less placeholder shown while listings load (instead of a blank page / lone spinner). */
+@Composable
+fun SkeletonCard(modifier: Modifier = Modifier) {
+    val palette = LocalKejaPalette.current
+    Column(
+        modifier
+            .width(172.dp)
+            .clip(KejaShapes.card)
+            .background(palette.card)
+            .border(1.dp, palette.border, KejaShapes.card)
+    ) {
+        Box(Modifier.fillMaxWidth().height(118.dp).background(palette.primaryLight))
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.padding(horizontal = 11.dp).fillMaxWidth().height(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).background(palette.primaryLight))
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.padding(horizontal = 11.dp).fillMaxWidth(0.55f).height(12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).background(palette.primaryLight))
+        Spacer(Modifier.height(12.dp))
     }
 }
