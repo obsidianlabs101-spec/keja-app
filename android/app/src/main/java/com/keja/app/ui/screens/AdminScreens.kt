@@ -31,7 +31,8 @@ object AdminRoutes {
     const val PAYMENTS = "admin-payments"
     const val LISTINGS = "admin-listings"
     const val ADS = "admin-ads"
-    val all = listOf(HOME, NEW, LANDLORDS, PAYMENTS, LISTINGS, ADS)
+    const val CATALOG = "admin-catalog"
+    val all = listOf(HOME, NEW, LANDLORDS, PAYMENTS, LISTINGS, ADS, CATALOG)
 }
 
 private val Red = Color(0xFFEF4444)
@@ -76,6 +77,8 @@ fun AdminOverviewScreen(onOpen: (String) -> Unit) {
             Text("Total users: ${o.total_users}", color = palette.muted, fontSize = 12.sp)
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = { onOpen(AdminRoutes.ADS) }, modifier = Modifier.fillMaxWidth()) { Text("Manage ads") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = { onOpen(AdminRoutes.CATALOG) }, modifier = Modifier.fillMaxWidth()) { Text("Categories & locations") }
         }
     }
 }

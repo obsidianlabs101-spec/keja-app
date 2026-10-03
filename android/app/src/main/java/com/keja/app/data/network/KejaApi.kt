@@ -33,6 +33,33 @@ interface KejaApi {
         @Query("property_type") propertyType: String? = null,
     ): Response<List<Property>>
 
+    @GET("properties/categories")
+    suspend fun catalogCategories(): Response<List<CatalogCategory>>
+
+    @GET("properties/locations")
+    suspend fun catalogLocations(): Response<List<String>>
+
+    @GET("admin/catalog")
+    suspend fun adminCatalog(): Response<AdminCatalogResponse>
+
+    @POST("admin/catalog/categories")
+    suspend fun adminAddCategory(@Body body: CategoryBody): Response<CatalogCategory>
+
+    @PATCH("admin/catalog/categories/{id}")
+    suspend fun adminPatchCategory(@Path("id") id: String, @Body body: CategoryPatchBody): Response<CatalogCategory>
+
+    @DELETE("admin/catalog/categories/{id}")
+    suspend fun adminDeleteCategory(@Path("id") id: String): Response<ResponseBody>
+
+    @POST("admin/catalog/locations")
+    suspend fun adminAddLocation(@Body body: LocationBody): Response<CatalogLocation>
+
+    @PATCH("admin/catalog/locations/{id}")
+    suspend fun adminPatchLocation(@Path("id") id: String, @Body body: LocationPatchBody): Response<CatalogLocation>
+
+    @DELETE("admin/catalog/locations/{id}")
+    suspend fun adminDeleteLocation(@Path("id") id: String): Response<ResponseBody>
+
     @GET("properties/category-counts")
     suspend fun categoryCounts(@Query("listing_type") listingType: String? = null): Response<Map<String, Int>>
 

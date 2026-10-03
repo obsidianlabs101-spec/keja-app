@@ -49,12 +49,7 @@ import kotlinx.coroutines.launch
  * Shared so Home's Shops filter and Discover both agree on what counts. */
 val COMMERCIAL_TYPES = setOf("Shop", "Office", "Warehouse", "Commercial")
 
-fun categoryOfType(type: String): String = when {
-    type == "Airbnb" -> "airbnb"
-    type == "Hostel" -> "hostels"
-    type in COMMERCIAL_TYPES -> "commercial"
-    else -> "apartments"
-}
+fun categoryOfType(type: String): String = com.keja.app.data.Catalog.groupOf(type)
 
 fun propertyCategoryOf(p: Property): String = categoryOfType(p.property_type)
 
@@ -125,7 +120,9 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
     }
 
     var counts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    LaunchedEffect(selectedListingType) {
+    var catalogVersion by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { repo.refreshCatalog(); catalogVersion++ }
+    LaunchedEffect(selectedListingType, catalogVersion) {
         val byType = runCatching { repo.categoryCounts(selectedListingType) }.getOrDefault(emptyMap())
         val folded = mutableMapOf("apartments" to 0, "hostels" to 0, "airbnb" to 0, "commercial" to 0)
         byType.forEach { (t, n) ->
@@ -186,7 +183,7 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
 
                 // ---- Popular areas (one tidy row, no heading — saves a screenful) ----
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    rowItems(listOf("Kilimani", "Westlands", "Roysambu", "Lavington", "Kasarani", "Ruaka", "Juja")) { area ->
+                    rowItems(com.keja.app.data.Catalog.areas()) { area ->
                         Box(
                             Modifier
                                 .clip(KejaShapes.pill)

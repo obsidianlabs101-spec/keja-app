@@ -228,3 +228,24 @@ data class HostCommentDto(
     val is_mine: Boolean = false,
 )
 data class HostCommentCreateRequest(val body: String)
+
+
+// ---- Admin-managed housing categories + keyword locations
+data class CatalogCategory(
+    val id: String,
+    val name: String,
+    val group: String,
+    val active: Boolean = true,
+    val sort_order: Int = 0,
+    val listings: Int = 0,
+)
+data class CatalogLocation(val id: String, val name: String, val active: Boolean = true, val sort_order: Int = 0)
+data class AdminCatalogResponse(
+    val groups: List<String> = emptyList(),
+    val categories: List<CatalogCategory> = emptyList(),
+    val locations: List<CatalogLocation> = emptyList(),
+)
+data class CategoryBody(val name: String, val group: String)
+data class CategoryPatchBody(val name: String? = null, val group: String? = null, val active: Boolean? = null)
+data class LocationBody(val name: String)
+data class LocationPatchBody(val name: String? = null, val active: Boolean? = null)

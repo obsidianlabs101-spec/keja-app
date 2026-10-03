@@ -34,6 +34,7 @@ private const val ROUTE_ADMIN_LANDLORDS = "admin-landlords"
 private const val ROUTE_ADMIN_PAYMENTS = "admin-payments"
 private const val ROUTE_ADMIN_LISTINGS = "admin-listings"
 private const val ROUTE_ADMIN_ADS = "admin-ads"
+private const val ROUTE_ADMIN_CATALOG = "admin-catalog"
 
 @Composable
 fun KejaNavGraph(
@@ -224,6 +225,10 @@ fun KejaNavGraph(
             composable(ROUTE_ADMIN_ADS) {
                 if (user?.is_admin != true) { LaunchedEffect(Unit) { navController.popBackStack() } }
                 else AdminAdsScreen()
+            }
+            composable(ROUTE_ADMIN_CATALOG) {
+                if (user?.is_admin != true) { LaunchedEffect(Unit) { navController.popBackStack() } }
+                else AdminCatalogScreen()
             }
         }
     }

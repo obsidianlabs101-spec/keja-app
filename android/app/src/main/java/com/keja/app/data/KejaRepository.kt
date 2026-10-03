@@ -135,6 +135,21 @@ class KejaRepository(private val sessionStore: SessionStore) {
         unwrap(api.uploadIdImage(MultipartBody.Part.createFormData("file", file.name, body)))
     }
     suspend fun deleteProperty(id: String) { unwrap(api.deleteProperty(id)) }
+
+    // ---- Catalog: admin-managed categories + keyword locations
+    /** Fetches the lists and stores them in [Catalog] so any screen can use them synchronously. */
+    suspend fun refreshCatalog() {
+        runCatching { unwrap(api.catalogCategories()) }.onSuccess { Catalog.categories = it }
+        runCatching { unwrap(api.catalogLocations()) }.onSuccess { Catalog.locations = it }
+    }
+    suspend fun adminCatalog() = unwrap(api.adminCatalog())
+    suspend fun adminAddCategory(name: String, group: String) = unwrap(api.adminAddCategory(CategoryBody(name, group)))
+    suspend fun adminRenameCategory(id: String, name: String) = unwrap(api.adminPatchCategory(id, CategoryPatchBody(name = name)))
+    suspend fun adminSetCategoryActive(id: String, active: Boolean) = unwrap(api.adminPatchCategory(id, CategoryPatchBody(active = active)))
+    suspend fun adminDeleteCategory(id: String) { unwrap(api.adminDeleteCategory(id)) }
+    suspend fun adminAddLocation(name: String) = unwrap(api.adminAddLocation(LocationBody(name)))
+    suspend fun adminSetLocationActive(id: String, active: Boolean) = unwrap(api.adminPatchLocation(id, LocationPatchBody(active = active)))
+    suspend fun adminDeleteLocation(id: String) { unwrap(api.adminDeleteLocation(id)) }
     suspend fun requestReferral(id: String) = unwrap(api.requestReferral(id))
 
     // ---- Admin ----

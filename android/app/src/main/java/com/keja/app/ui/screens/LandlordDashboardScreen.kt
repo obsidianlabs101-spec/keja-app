@@ -562,6 +562,17 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
 
     var category by remember { mutableStateOf("apartments") } // apartments | hostels | airbnb | commercial
     var subType by remember { mutableStateOf("Bedsitter") }
+    var catalogLoaded by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        repo.refreshCatalog()
+        catalogLoaded++
+        subType = com.keja.app.data.Catalog.typesFor(category).firstOrNull() ?: subType
+    }
+    // The type saved on the listing: the picked one when there is a choice, otherwise the group's only type.
+    fun chosenType(): String {
+        val opts = com.keja.app.data.Catalog.typesFor(category)
+        return if (opts.size > 1) subType else (opts.firstOrNull() ?: when (category) { "airbnb" -> "Airbnb"; "hostels" -> "Hostel"; else -> subType })
+    }
     var listingType by remember { mutableStateOf("rent") } // rent | sale
     var price by remember { mutableStateOf("") }
     var agentFee by remember { mutableStateOf("") }
@@ -598,29 +609,18 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
             selected = category,
             onSelect = {
                 category = it
-                subType = when (it) {
-                    "commercial" -> "Shop"
-                    else -> "Bedsitter"
-                }
+                subType = com.keja.app.data.Catalog.typesFor(it).firstOrNull() ?: ""
             },
         )
 
-        if (category == "apartments") {
+        // One option (e.g. just "Hostel") needs no picker; two or more (e.g. Bedsitter, Bungalow…) do.
+        val typeOptions = com.keja.app.data.Catalog.typesFor(category)
+        if (typeOptions.size > 1) {
             Spacer(Modifier.height(12.dp))
             Text("Property type", fontSize = 12.sp, color = Color.Gray)
             Spacer(Modifier.height(6.dp))
             PickerPillRow(
-                options = listOf("Bedsitter", "Studio", "1 Bedroom", "2 Bedroom", "3+ Bedroom", "House").map { it to it },
-                selected = subType,
-                onSelect = { subType = it },
-                wrap = true,
-            )
-        } else if (category == "commercial") {
-            Spacer(Modifier.height(12.dp))
-            Text("What kind of space?", fontSize = 12.sp, color = Color.Gray)
-            Spacer(Modifier.height(6.dp))
-            PickerPillRow(
-                options = listOf("Shop", "Office", "Warehouse", "Commercial").map { it to it },
+                options = typeOptions.map { it to it },
                 selected = subType,
                 onSelect = { subType = it },
                 wrap = true,
@@ -633,6 +633,12 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
         KejaTextField(agentFee, { agentFee = it }, "Agent fee in KES (optional — leave empty if none)")
         Spacer(Modifier.height(12.dp))
         KejaTextField(location, { location = it }, "Location / area")
+        // Keyword locations set by Keja admins: tap to fill.
+        val areaHints = com.keja.app.data.Catalog.areas().filter { it.contains(location, ignoreCase = true) && !it.equals(location, ignoreCase = true) }.take(6)
+        if (areaHints.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            PickerPillRow(options = areaHints.map { it to it }, selected = "", onSelect = { location = it }, wrap = true)
+        }
         Spacer(Modifier.height(12.dp))
         KejaTextField(landmark, { landmark = it }, "Nearby landmark")
         Spacer(Modifier.height(12.dp))
@@ -680,10 +686,10 @@ private fun AddPropertyForm(onPublished: () -> Unit, onCancel: () -> Unit) {
                     try {
                         val prop = repo.createProperty(
                             PropertyCreateRequest(
-                                title = "${when (category) { "airbnb" -> "Airbnb"; "hostels" -> "Hostel"; else -> subType }} in $location",
+                                title = "${chosenType()} in $location",
                                 description = desc.ifBlank { null },
                                 price = priceValue,
-                                property_type = when (category) { "airbnb" -> "Airbnb"; "hostels" -> "Hostel"; else -> subType },
+                                property_type = chosenType(),
                                 listing_type = listingType,
                                 agent_fee = agentFee.toDoubleOrNull()?.takeIf { it > 0 },
                                 bedrooms = null,
