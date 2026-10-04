@@ -64,7 +64,12 @@ interface KejaApi {
     suspend fun categoryCounts(@Query("listing_type") listingType: String? = null): Response<Map<String, Int>>
 
     @GET("properties/discover")
-    suspend fun discover(@Query("limit") limit: Int = 30): Response<List<Property>>
+    suspend fun discover(
+        @Query("limit") limit: Int = 30,
+        @Query("offset") offset: Int = 0,
+        @Query("seed") seed: String? = null,
+        @Query("listing_type") listingType: String? = null,
+    ): Response<List<Property>>
 
     @GET("properties/interested")
     suspend fun interested(): Response<List<Property>>

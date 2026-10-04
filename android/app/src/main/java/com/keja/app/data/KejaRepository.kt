@@ -79,7 +79,8 @@ class KejaRepository(private val sessionStore: SessionStore) {
 
     suspend fun categoryCounts(listingType: String? = null) = unwrap(api.categoryCounts(listingType))
 
-    suspend fun discover(limit: Int = 30) = unwrap(api.discover(limit))
+    suspend fun discover(limit: Int = 30, offset: Int = 0, seed: String? = null, listingType: String? = null) =
+        unwrap(api.discover(limit, offset, seed, listingType))
     suspend fun interested() = unwrap(api.interested())
     suspend fun myListings() = unwrap(api.myListings())
     suspend fun myStats() = unwrap(api.myStats())

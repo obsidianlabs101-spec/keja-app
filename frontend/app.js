@@ -348,49 +348,104 @@ function search() {
 }
 
 /* ---------------- Discover (vertical feed) ---------------- */
-function discover() {
-  if (!isLoggedIn()) {
-    app.innerHTML = `<div class="empty locked"><div class="emoji">⌕</div><h3>Log in to discover places</h3><p class="muted">Create a free account to swipe through listings and save the ones you like.</p><button class="primary" id="discLogin" style="margin-top:14px">Log in</button></div>`;
-    document.getElementById("discLogin").onclick = () => openLogin();
-    return;
+// A stable shuffle for ~10 minutes: coming back to Discover keeps your place, a later visit reshuffles.
+let _discoverSeed = null, _discoverSeedAt = 0;
+function discoverSeed() {
+  if (!_discoverSeed || Date.now() - _discoverSeedAt > 600000) {
+    _discoverSeed = Math.random().toString(36).slice(2, 12); _discoverSeedAt = Date.now();
   }
+  return _discoverSeed;
+}
+const DISCOVER_PAGE = 30;
 
-  app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
- ${listingPillsHtml(discoverListingType)}
- <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div></section>`;
-
-  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = (b.dataset.lt === "all" || discoverListingType === b.dataset.lt) ? null : b.dataset.lt; discover(); });
-  api("/properties/discover?limit=50" + (discoverListingType ? "&listing_type=" + discoverListingType : "")).then(list => {
-    discoverQueue = list;
-    const scroller = document.getElementById("discoverScroll");
-    if (!scroller) return;
-    if (!list.length) {
-      scroller.outerHTML = `<div class="empty" style="width:100%"><div class="emoji">🏠</div><h3>${discoverListingType === "sale" ? "Nothing for sale yet" : discoverListingType === "rent" ? "Nothing for rent yet" : "You've seen everything for now"}</h3><p class="muted">Check back later for new listings.</p></div>`;
-      return;
-    }
-    scroller.innerHTML = list.map(x => {
-      const imgs = (x.images && x.images.length) ? x.images.slice().sort((a, b) => a.sort_order - b.sort_order).map(i => i.url) : [x.main_image_url];
-      return `<article class="swipe-card" data-id="${x.id}" data-landlord="${x.landlord_id}">
+function discoverCardHtml(x) {
+    const imgs = (x.images && x.images.length) ? x.images.slice().sort((a, b) => a.sort_order - b.sort_order).map(i => i.url) : [x.main_image_url];
+    return `<article class="swipe-card" data-id="${x.id}" data-landlord="${x.landlord_id}">
    <div class="swipe-gallery">${imgs.map(u => `<img src="${mediaUrl(u)}" alt="${escHtml(x.property_type)} in ${escHtml(x.area || x.county)}">`).join("")}</div>
    <div class="gradient"></div>
    ${imgs.length > 1 ? `<div class="gallery-dots">${imgs.map((_, i) => `<span class="dot${i === 0 ? " active" : ""}"></span>`).join("")}</div>` : ""}
    <div class="swipe-info"><div class="price">${money(x.price)}${x.listing_type === "sale" ? ' <span style="font-size:12px;font-weight:500">for sale</span>' : ""}</div><div class="meta">${escHtml(x.property_type)} · ${escHtml(x.area || x.county)}</div>${x.proximity_note ? `<div style="margin-top:9px">${escHtml(x.proximity_note)}</div>` : ""}</div>
    <div class="discover-fab-stack">
-     <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
-     <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
-     <button class="discover-fab hide-fab" title="Hide buttons">${discoverUIHidden ? ICON_EYE_OFF : ICON_EYE}</button>
+   <button class="discover-fab landlord-fab" title="View landlord's properties" data-action="landlord">⌂</button>
+   <button class="discover-fab interested-fab ${interestedIds.has(x.id) ? "active" : ""}" title="Save to Interested" data-action="interested">♡</button>
+   <button class="discover-fab hide-fab" title="Hide buttons">${discoverUIHidden ? ICON_EYE_OFF : ICON_EYE}</button>
    </div>
  </article>`;
-    }).join("");
+}
+
+function discover() {
+  app.innerHTML = `<section class="discover-page ${discoverUIHidden ? "ui-hidden" : ""}" id="discoverPage"><div class="section-head"><div><div class="eyebrow">DISCOVER</div><h2 style="margin-top:5px">Find your next keja</h2></div></div>
+ ${listingPillsHtml(discoverListingType)}
+ <div class="discover-scroll vertical" id="discoverScroll"><div class="empty" style="width:100%">${loaderHtml()}</div></div></section>`;
+
+  document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { discoverListingType = (b.dataset.lt === "all" || discoverListingType === b.dataset.lt) ? null : b.dataset.lt; discover(); });
+
+  const seed = discoverSeed();
+  const ltq = discoverListingType ? "&listing_type=" + discoverListingType : "";
+  const pageUrl = off => `/properties/discover?limit=${DISCOVER_PAGE}&offset=${off}&seed=${seed}${ltq}`;
+  let offset = 0, done = false, busy = false;
+
+  // Hearts for places you've already saved (logged-in only; guests can browse freely).
+  if (isLoggedIn()) api("/properties/interested").then(l => { (l || []).forEach(p => interestedIds.add(p.id)); document.querySelectorAll("#discoverScroll .swipe-card").forEach(c => { if (interestedIds.has(c.dataset.id)) c.querySelector(".interested-fab")?.classList.add("active"); }); }).catch(() => {});
+
+  const loadMore = () => {
+    if (done || busy) return;
+    busy = true;
+    api(pageUrl(offset)).then(list => {
+      const scroller = document.getElementById("discoverScroll");
+      if (!scroller) return;
+      offset += list.length;
+      if (list.length < DISCOVER_PAGE) done = true;
+      scroller.querySelector("#discoverMore")?.remove();
+      if (list.length) {
+        discoverQueue = discoverQueue.concat(list);
+        scroller.insertAdjacentHTML("beforeend", list.map(discoverCardHtml).join(""));
+        bindDiscoverCards();
+      }
+      if (!done) {
+        scroller.insertAdjacentHTML("beforeend", '<div id="discoverMore" style="flex:none;height:2px;width:100%"></div>');
+        const sentinel = document.getElementById("discoverMore");
+        // Start loading the next page when you get within ~4 cards of the end.
+        const cards = scroller.querySelectorAll(".swipe-card");
+        const trigger = cards[Math.max(0, cards.length - 4)];
+        const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); loadMore(); } }, { root: scroller, rootMargin: "300px" });
+        io.observe(trigger || sentinel);
+      }
+    }).catch(() => { done = true; }).finally(() => { busy = false; });
+  };
+
+  busy = true;
+  api(pageUrl(0)).then(list => {
+    discoverQueue = list;
+    const scroller = document.getElementById("discoverScroll");
+    if (!scroller) return;
+    if (!list.length) {
+      scroller.outerHTML = `<div class="empty" style="width:100%"><div class="emoji">🏠</div><h3>${discoverListingType === "sale" ? "Nothing for sale yet" : discoverListingType === "rent" ? "Nothing for rent yet" : "No listings yet"}</h3><p class="muted">Check back later for new listings.</p></div>`;
+      done = true;
+      return;
+    }
+    offset = list.length;
+    if (list.length < DISCOVER_PAGE) done = true;
+    scroller.innerHTML = list.map(discoverCardHtml).join("");
     bindDiscoverCards();
+    busy = false;
+    if (!done) {
+      // arm the "load more" trigger on the card 4 from the end
+      const cards = scroller.querySelectorAll(".swipe-card");
+      const trigger = cards[Math.max(0, cards.length - 4)];
+      const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); loadMore(); } }, { root: scroller, rootMargin: "300px" });
+      if (trigger) io.observe(trigger);
+    }
   }).catch(() => {
     const scroller = document.getElementById("discoverScroll");
     if (scroller) { scroller.outerHTML = `<div class="empty" style="width:100%"><h3>Couldn't load Discover</h3><button class="primary" id="discRetry" style="margin-top:14px">Retry</button></div>`; const r = document.getElementById("discRetry"); if (r) r.onclick = () => discover(); }
-  });
+  }).finally(() => { busy = false; });
 }
 
 function bindDiscoverCards() {
   document.querySelectorAll("#discoverScroll .swipe-card").forEach(card => {
+    if (card.dataset.bound === "1") return;   // pages are appended; don't re-bind old cards
+    card.dataset.bound = "1";
     const id = card.dataset.id;
     const landlordId = card.dataset.landlord;
 
@@ -399,6 +454,7 @@ function bindDiscoverCards() {
     const heartBtn = card.querySelector('[data-action="interested"]');
     heartBtn.onclick = async (e) => {
       e.stopPropagation();
+      if (!isLoggedIn()) { toast("Log in to save places you like"); openLogin(); return; }
       try {
         await api(`/properties/${id}/swipe?direction=right`, { method: "POST" });
         interestedIds.add(id);

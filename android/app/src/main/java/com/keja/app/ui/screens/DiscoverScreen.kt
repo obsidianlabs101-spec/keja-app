@@ -53,41 +53,48 @@ fun DiscoverScreen(
 
     var loadError by remember { mutableStateOf(false) }
     var reloadKey by remember { mutableStateOf(0) }
+    var loadingMore by remember { mutableStateOf(false) }
+    var endReached by remember { mutableStateOf(false) }
+    val pageSize = 30
 
-    LaunchedEffect(isLoggedIn, reloadKey) {
-        if (isLoggedIn) {
-            loading = true
-            loadError = false
-            // Don't swallow failures into an empty list — that made a slow/failed
-            // request look like "You've seen everything". Retry once (Render can be
-            // cold-starting), then show a real error with a Retry button.
-            var result = runCatching { repo.discover(limit = 50) }
-            if (result.isFailure) {
-                kotlinx.coroutines.delay(1500)
-                result = runCatching { repo.discover(limit = 50) }
-            }
-            result.onSuccess { properties = it }.onFailure { loadError = true }
-            runCatching { repo.interested() }.onSuccess { list -> interestedIds = list.map { it.id }.toSet() }
-            loading = false
+    // First page. Re-runs when the rent/sale filter changes (the SERVER filters, so the
+    // whole catalogue is reachable, not just the first batch) or on Retry.
+    LaunchedEffect(listingFilter, reloadKey) {
+        properties = emptyList()   // never show the previous tab's cards under the new tab
+        loading = true
+        loadError = false
+        endReached = false
+        val seed = com.keja.app.data.DiscoverSeed.current()
+        // Don't swallow failures into an empty list — that made a slow/failed request
+        // look like "You've seen everything". Retry once (Render can be cold-starting).
+        var result = runCatching { repo.discover(limit = pageSize, offset = 0, seed = seed, listingType = listingFilter) }
+        if (result.isFailure) {
+            kotlinx.coroutines.delay(1500)
+            result = runCatching { repo.discover(limit = pageSize, offset = 0, seed = seed, listingType = listingFilter) }
         }
+        result.onSuccess { properties = it; endReached = it.size < pageSize }.onFailure { loadError = true }
+        loading = false
+    }
+    // Saved hearts (logged-in only; guests browse freely).
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) runCatching { repo.interested() }.onSuccess { list -> interestedIds = list.map { it.id }.toSet() }
     }
 
-    if (!isLoggedIn) {
-        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            DiscoverStateCard(
-                icon = Icons.Filled.Search,
-                title = "Log in to discover places",
-                subtitle = "Swipe through new listings picked for you.",
-                actionLabel = "Log in",
-                onAction = onRequireLogin,
-            )
+    // Next page, used by the pager when you get near the end.
+    fun loadMore() {
+        if (loadingMore || endReached || loading) return
+        loadingMore = true
+        scope.launch {
+            val seed = com.keja.app.data.DiscoverSeed.current()
+            runCatching { repo.discover(limit = pageSize, offset = properties.size, seed = seed, listingType = listingFilter) }
+                .onSuccess { more ->
+                    val known = properties.map { it.id }.toSet()
+                    properties = properties + more.filter { it.id !in known }
+                    if (more.size < pageSize) endReached = true
+                }
+                .onFailure { /* try again on the next swipe */ }
+            loadingMore = false
         }
-        return
-    }
-
-    if (loading) {
-        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
-        return
     }
 
     if (loadError && properties.isEmpty()) {
@@ -103,33 +110,28 @@ fun DiscoverScreen(
         return
     }
 
-    if (properties.isEmpty()) {
-        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            DiscoverStateCard(
-                icon = Icons.Filled.CheckCircle,
-                title = "You've seen everything for now",
-                subtitle = "Check back soon — new listings are added often.",
-            )
-        }
-        return
-    }
-
-    val shown = properties.filter { listingFilter == null || it.listing_type == listingFilter }
+    // The server already applied the rent/sale filter.
+    val shown = properties
 
     Column(Modifier.fillMaxSize().background(Color.Black)) {
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        if (shown.isEmpty()) {
+        if (shown.isEmpty() && loading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { com.keja.app.ui.components.KejaLoader() }
+        } else if (shown.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 DiscoverStateCard(
                     icon = Icons.Filled.Search,
-                    title = if (listingFilter == "sale") "Nothing for sale yet" else "Nothing for rent yet",
-                    subtitle = "Try the other tab, or check back soon.",
+                    title = when (listingFilter) { "sale" -> "Nothing for sale yet"; "rent" -> "Nothing for rent yet"; else -> "No listings yet" },
+                    subtitle = if (listingFilter == null) "Check back soon — new listings are added often." else "Tap the other tab, or check back soon.",
                 )
             }
         } else {
             androidx.compose.runtime.key(listingFilter) {
                 // Exactly one property per screen; swipe up/down to move on.
                 val pagerState = rememberPagerState(pageCount = { shown.size })
+                LaunchedEffect(pagerState.currentPage, shown.size) {
+                    if (pagerState.currentPage >= shown.size - 5) loadMore()
+                }
                 VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                     val property = shown[page]
                     val isSaved = interestedIds.contains(property.id)
@@ -140,6 +142,7 @@ fun DiscoverScreen(
                         onTap = { onOpenProperty(property.id) },
                         onLandlordClick = { onOpenLandlord(property.landlord_id) },
                         onInterestedClick = {
+                            if (!isLoggedIn) { onRequireLogin(); return@DiscoverCard }
                             scope.launch {
                                 runCatching { repo.swipe(property.id, "right") }
                                 interestedIds = interestedIds + property.id
