@@ -73,15 +73,20 @@ def discover(
     bedrooms: Optional[int] = None,
     property_type: Optional[str] = None,
     listing_type: Optional[str] = None,
-    limit: int = Query(20, le=50),
-    current_user=Depends(get_current_user),
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    seed: Optional[str] = Query(None, max_length=40, pattern=r"^[A-Za-z0-9_-]*$"),
+    current_user=Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    """Public: guests can browse Discover; saving/contacting still needs a login."""
     filters = PropertyFilters(
         county=county, area=area, min_price=min_price, max_price=max_price,
         bedrooms=bedrooms, property_type=property_type, listing_type=listing_type,
     )
-    return property_service.discover_queue(db, current_user.id, filters, limit=limit)
+    return property_service.discover_queue(
+        db, current_user.id if current_user else None, filters, limit=limit, offset=offset, seed=seed,
+    )
 
 
 @router.get("/mine", response_model=List[PropertyRead])

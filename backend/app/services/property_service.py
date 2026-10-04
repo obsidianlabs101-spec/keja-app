@@ -174,13 +174,24 @@ def search_properties(db: Session, filters: PropertyFilters, limit: int = 50, of
     return query.order_by(Property.created_at.desc()).offset(offset).limit(limit).all()
 
 
-def discover_queue(db: Session, user_id: UUID, filters: PropertyFilters, limit: int = 20) -> List[Property]:
-    """Every available listing (not the user's own), in random order — the
-    Tinder-style Discover deck."""
+def discover_queue(
+    db: Session,
+    user_id: Optional[UUID],
+    filters: PropertyFilters,
+    limit: int = 20,
+    offset: int = 0,
+    seed: Optional[str] = None,
+) -> List[Property]:
+    """EVERY available listing, in a random-looking order, one page at a time.
+
+    - Open to guests too (user_id may be None) and includes the viewer's own
+      listings, so nothing is ever silently hidden.
+    - `seed` makes the shuffle stable: the same seed gives the same order, so
+      page 2 continues page 1 with no repeats or gaps. A new seed reshuffles.
+    """
     query = (
         _base_query(db)
         .filter(Property.is_available == True)  # noqa: E712
-        .filter(Property.landlord_id != user_id)
     )
 
     if filters.county:
@@ -198,7 +209,12 @@ def discover_queue(db: Session, user_id: UUID, filters: PropertyFilters, limit: 
     if filters.listing_type:
         query = query.filter(Property.listing_type == filters.listing_type)
 
-    return query.order_by(func.random()).limit(limit).all()
+    if seed and db.bind is not None and db.bind.dialect.name == "postgresql":
+        from sqlalchemy import String, cast
+        order = (func.md5(cast(Property.id, String) + seed), Property.id)
+    else:
+        order = (func.random(),)
+    return query.order_by(*order).offset(max(offset, 0)).limit(limit).all()
 
 
 def record_swipe(db: Session, user_id: UUID, property_id: UUID, direction: str) -> None:
