@@ -38,6 +38,7 @@ object ApiClient {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(AuthInterceptor(sessionStore))
+            .addInterceptor(ResponseCacheInterceptor()) // after Auth so the token is part of the cache key
             .build()
 
         return Retrofit.Builder()

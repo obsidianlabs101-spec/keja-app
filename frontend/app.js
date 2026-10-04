@@ -43,12 +43,51 @@ const ICON_EYE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" st
 const ICON_EYE_OFF = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>`;
 
 /* ---------------- API helper ---------------- */
+// ---- Client-side GET cache -------------------------------------------------
+// Moving Home -> a listing -> back used to re-download everything each time.
+// Public, non-personal data is now kept for a short while and identical
+// requests in flight are shared. Any write (POST/PUT/PATCH/DELETE), login or
+// logout empties it, so you never look at stale data after changing something.
+const API_CACHE = new Map();      // key -> { exp, data }
+const API_INFLIGHT = new Map();   // key -> Promise
+const API_CACHE_RULES = [
+  [/^\/properties\/?(\?|$)/, 45000],               // Home feed / search
+  [/^\/properties\/category-counts/, 60000],
+  [/^\/properties\/(categories|locations)$/, 300000],
+  [/^\/ads\//, 120000],
+  [/^\/properties\/discover/, 120000],              // same order when you come back; reshuffles after 2 min
+  [/^\/properties\/[0-9a-fA-F-]{36}$/, 60000],      // a listing's details
+  [/^\/properties\/landlord\//, 60000],            // landlord page + comments
+];
+function apiCacheTtl(path) { const r = API_CACHE_RULES.find(([rx]) => rx.test(path)); return r ? r[1] : 0; }
+function apiCacheClear() { API_CACHE.clear(); }
+const cloneData = d => (d && typeof structuredClone === "function") ? structuredClone(d) : d;
+
 async function api(path, options) {
   options = options || {};
+  const method = (options.method || "GET").toUpperCase();
+  const ttl = method === "GET" && !options.fresh ? apiCacheTtl(path) : 0;
+  const key = (token || "") + "|" + path;
+  if (ttl) {
+    const hit = API_CACHE.get(key);
+    if (hit && hit.exp > Date.now()) return cloneData(hit.data);
+    if (API_INFLIGHT.has(key)) return API_INFLIGHT.get(key).then(cloneData);
+  }
+  const run = apiFetch(path, options);
+  if (ttl) {
+    API_INFLIGHT.set(key, run);
+    run.then(data => { API_CACHE.set(key, { exp: Date.now() + ttl, data }); }).catch(() => {}).finally(() => API_INFLIGHT.delete(key));
+  }
+  if (method !== "GET") run.then(apiCacheClear, apiCacheClear);
+  return ttl ? run.then(cloneData) : run;
+}
+
+async function apiFetch(path, options) {
   const headers = Object.assign({}, options.headers || {});
   if (token) headers["Authorization"] = "Bearer " + token;
   if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
-  const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  const { fresh, ...fetchOptions } = options;
+  const res = await fetch(API_BASE + path, Object.assign({}, fetchOptions, { headers }));
   // Only drop the session when a token we actually sent was rejected
   // (bad login attempts return 401 too and must not wipe the UI).
   if (res.status === 401 && token) {
@@ -64,6 +103,7 @@ async function api(path, options) {
 }
 
 function setSession(newToken, user) {
+  apiCacheClear();
   token = newToken;
   currentUser = user;
   localStorage.setItem("kejaToken", token);
@@ -522,7 +562,7 @@ function profile() {
 }
 
 function logout(silent) {
-  token = ""; currentUser = null;
+  apiCacheClear(); token = ""; currentUser = null;
   localStorage.removeItem("kejaToken");
   localStorage.removeItem("kejaUser");
   updateAvatar();

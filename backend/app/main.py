@@ -135,6 +135,57 @@ async def log_requests(request, call_next):
             content={"detail": detail},
         )
 
+
+# ---------------------------------------------------------------------------
+# Response cache for public, non-personal GETs (see app/core/ttl_cache.py).
+# Sits INSIDE CORSMiddleware (which is added last) so cached bodies never carry
+# another visitor's CORS headers. Any successful write under /properties or
+# /admin (new listing, approval, booked, ad change, category change...) clears it.
+# ---------------------------------------------------------------------------
+import re as _re
+from fastapi import Response as _Response
+from app.core import ttl_cache as _ttl_cache
+
+_CACHE_RULES = [
+    (_re.compile(r"^/properties/?$"), 30),            # listing search (Home feed)
+    (_re.compile(r"^/properties/category-counts$"), 60),
+    (_re.compile(r"^/properties/categories$"), 300),
+    (_re.compile(r"^/properties/locations$"), 300),
+    (_re.compile(r"^/ads/[A-Za-z_]+$"), 120),
+]
+_DROP_HEADERS = {"content-length", "date", "server"}
+
+
+@app.middleware("http")
+async def response_cache(request, call_next):
+    method = request.method
+    path = request.url.path
+    if method in ("POST", "PUT", "PATCH", "DELETE"):
+        response = await call_next(request)
+        if response.status_code < 400 and (path.startswith("/properties") or path.startswith("/admin")):
+            _ttl_cache.clear()
+        return response
+    if method != "GET":
+        return await call_next(request)
+
+    ttl = next((t for rx, t in _CACHE_RULES if rx.match(path)), None)
+    if not ttl:
+        return await call_next(request)
+
+    key = path + "?" + request.url.query
+    hit = _ttl_cache.get(key)
+    if hit:
+        status, headers, body, media_type = hit
+        return _Response(content=body, status_code=status, headers=dict(headers), media_type=media_type)
+
+    response = await call_next(request)
+    if response.status_code != 200:
+        return response
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    headers = {k: v for k, v in response.headers.items() if k.lower() not in _DROP_HEADERS and k.lower() != "content-type"}
+    _ttl_cache.put(key, ttl, response.status_code, headers, body, response.media_type)
+    return _Response(content=body, status_code=response.status_code, headers=headers, media_type=response.media_type)
+
 # SECURITY: CORSMiddleware must be added last so it's genuinely outermost
 # — see the long comment this originally shipped with in Bash's main.py
 # for exactly why middleware order matters here (Starlette adds each new
