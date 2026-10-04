@@ -10,7 +10,7 @@ def page(fname,title,body,intro=""):
 <body><header class="top"><a class="logo" href="/">keja</a><a class="back" href="/">← Back to Keja</a></header>
 <main><h1>{title}</h1><p class="meta">Effective <span data-fill="effective">3 October 2026</span> · Operated by <span data-fill="company">Obsidian Labs</span></p>{intro}
 {body}
-<footer class="legal-foot"><p>{links}</p><p>Questions? <span data-fill="email">support email</span></p></footer></main></body></html>'''
+<footer class="legal-foot"><p>{links}</p><p>Questions? Email <span data-fill="email">support email</span> or call/WhatsApp <span data-fill="phone">phone</span></p></footer></main></body></html>'''
     open(os.path.join(OUT,fname),'w',encoding='utf-8').write(html)
 
 # ---------------------------------------------------------------- PRIVACY
@@ -104,7 +104,7 @@ privacy='''
 <p>If we make important changes we'll tell you in the app or by email and update the date at the top. Using Keja after a change means you accept the updated policy.</p>
 
 <h2 id="contact">12. Contact us</h2>
-<p><b data-fill="company">Obsidian Labs</b><br><span data-fill="address">Nairobi, Kenya</span><br><span data-fill="email">support email</span></p>
+<p><b data-fill="company">Obsidian Labs</b><br><span data-fill="address">Nairobi, Kenya</span><br><span data-fill="email">support email</span><br><span data-fill="phone">phone</span></p>
 '''
 page("privacy.html","Privacy Policy",privacy)
 
