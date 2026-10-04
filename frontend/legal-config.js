@@ -3,7 +3,6 @@
 window.KEJA_LEGAL = {
   company: "Obsidian Labs",                 // the business operating Keja
   email: "obsidianlabs101@gmail.com",      // support email shown on every legal page
-  phone: "0757 277 507",                    // support phone / WhatsApp
   address: "Nairobi, Kenya",                // <-- registered / postal address
   odpcReg: "",                              // <-- ODPC registration number if you have one (leave blank otherwise)
   effective: "3 October 2026"
