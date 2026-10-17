@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.first
 private val Context.dataStore by preferencesDataStore(name = "keja_session")
 
 class SessionStore(private val context: Context) {
+    /** Where the API response cache keeps its on-disk copies (cleared by Android when space is low). */
+    val cacheDir: java.io.File get() = java.io.File(context.cacheDir, "api-cache")
+
     private val tokenKey = stringPreferencesKey("token")
     private val userJsonKey = stringPreferencesKey("user_json")
     private val themeStyleKey = stringPreferencesKey("theme_style") // "pro" | "rangi"

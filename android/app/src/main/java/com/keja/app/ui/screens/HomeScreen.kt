@@ -120,6 +120,12 @@ fun HomeScreen(onOpenProperty: (String) -> Unit, onOpenAlerts: () -> Unit = {}) 
     }
 
     var counts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    // While the person reads Home, quietly fetch Discover's first page so that tab opens instantly
+    // (the response cache keeps it; the URL matches what DiscoverScreen asks for).
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1500)
+        runCatching { repo.discover(limit = 30, offset = 0, seed = com.keja.app.data.DiscoverSeed.current(), listingType = null) }
+    }
     var catalogVersion by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { repo.refreshCatalog(); catalogVersion++ }
     LaunchedEffect(selectedListingType, catalogVersion) {

@@ -33,13 +33,16 @@ object ApiClient {
     }
 
     private fun build(sessionStore: SessionStore): KejaApi {
+        val cache = ResponseCacheInterceptor(sessionStore.cacheDir)
         val client = OkHttpClient.Builder()
+            // Render's free server can need ~40-60s to wake up; keep patient timeouts.
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(AuthInterceptor(sessionStore))
-            .addInterceptor(ResponseCacheInterceptor()) // after Auth so the token is part of the cache key
+            .addInterceptor(cache) // after Auth so the token is part of the cache key
             .build()
+        cache.refreshClient = client
 
         return Retrofit.Builder()
             .baseUrl(API_BASE_URL)
