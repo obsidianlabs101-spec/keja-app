@@ -282,27 +282,24 @@ function home() {
   document.querySelectorAll(".lt-pill").forEach(b => b.onclick = () => { homeListingType = (b.dataset.lt === "all" || homeListingType === b.dataset.lt) ? null : b.dataset.lt; home(); });
 
   const lt = homeListingType ? "&listing_type=" + homeListingType : "";
+  const ltKey = homeListingType || "all";
   let totalPlaces = 0;
   const setHeadline = () => { const h = document.getElementById("homeHeadline"); if (h) h.textContent = totalPlaces > 0 ? `${totalPlaces} places to explore` : "Latest listings"; };
-  loadCatalog().then(() => {
-    const ac = document.getElementById("areaChips"); if (ac) { ac.innerHTML = areaChipsHtml(); bindAreaChips(); }
-    return api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : ""));
-  }).then(byType => {
+  const applyCounts = byType => {
     const c = foldCategoryCounts(byType);
     totalPlaces = Object.values(c).reduce((x, y) => x + y, 0);
     // Never advertise an empty shelf: a count badge only appears when there is something to see.
     document.querySelectorAll(".cat-count").forEach(el => { const n = c[el.dataset.c] || 0; if (n > 0) { el.textContent = n; el.hidden = false; } });
     setHeadline();
-  }).catch(() => {});
-
-  api("/properties/?limit=48" + lt).then(list => {
-    properties = list;
+  };
+  const renderFeed = list => {
     const grid = document.getElementById("homeGrid");
-    if (!grid) return; // user navigated away already
+    if (!grid) return false; // user navigated away already
+    properties = list;
     if (!list.length) {
       const emptyMsg = homeListingType === "sale" ? "Nothing for sale yet" : homeListingType === "rent" ? "Nothing for rent yet" : "No listings yet";
       grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>${emptyMsg}</h3><p class="muted">Be the first to list a property.</p></div>`;
-      return;
+      return true;
     }
     if (!totalPlaces) { totalPlaces = list.length; setHeadline(); }
     // Big cards straight away; the ad sits after the 3rd card instead of pushing listings off-screen.
@@ -311,12 +308,42 @@ function home() {
     grid.innerHTML = cards.join("");
     hydrateAds();
     bindCards();
+    return true;
+  };
+
+  // 1) Instant paint for anyone who has opened Keja before: show the last feed we saw
+  //    (a few hours old at worst) while the fresh one loads. Hides slow servers and cold starts.
+  let paintedFrom = "";
+  try {
+    const saved = JSON.parse(localStorage.getItem("kejaFeed:v1:" + ltKey) || "null");
+    if (saved && Array.isArray(saved.list) && saved.list.length && Date.now() - saved.t < 24 * 3600 * 1000) {
+      renderFeed(saved.list); paintedFrom = JSON.stringify(saved.list);
+      if (saved.counts) applyCounts(saved.counts);
+    }
+  } catch (e) { /* corrupt entry: ignore */ }
+
+  // 2) Fresh data. The category lists and the counts load IN PARALLEL with the feed.
+  let latestCounts = null;
+  const countsP = api("/properties/category-counts" + (homeListingType ? "?listing_type=" + homeListingType : ""))
+    .then(c => { latestCounts = c; applyCounts(c); }).catch(() => {});
+  loadCatalog().then(() => { const ac = document.getElementById("areaChips"); if (ac) { ac.innerHTML = areaChipsHtml(); bindAreaChips(); } });
+
+  api("/properties/?limit=48" + lt).then(list => {
+    const fresh = JSON.stringify(list);
+    if (fresh !== paintedFrom) renderFeed(list);      // only repaint if something actually changed
+    countsP.finally(() => {
+      try { localStorage.setItem("kejaFeed:v1:" + ltKey, JSON.stringify({ t: Date.now(), list: list.slice(0, 24), counts: latestCounts })); } catch (e) { /* storage full: fine */ }
+    });
+    // 3) While the person reads Home, quietly fetch Discover's first page so that tab opens instantly.
+    if (!homeListingType) setTimeout(() => { api(`/properties/discover?limit=${DISCOVER_PAGE}&offset=0&seed=${discoverSeed()}`).catch(() => {}); }, 1200);
   }).catch(() => {
+    if (paintedFrom) return;                           // we already showed the saved feed; don't replace it with an error
     const grid = document.getElementById("homeGrid");
     if (grid) grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>Couldn't load listings</h3><button class="primary" id="homeRetry" style="margin-top:12px">Retry</button></div>`;
     const r = document.getElementById("homeRetry"); if (r) r.onclick = home;
   });
 }
+
 
 function categoryPage(cat) {
   const labels = { apartments: "Apartments", hostels: "Hostels", airbnb: "Airbnb", commercial: "Shops / Commercial" };
