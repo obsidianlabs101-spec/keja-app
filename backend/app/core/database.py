@@ -159,3 +159,27 @@ def ensure_schema_upgrades(bind=None):
                     )
                 except Exception as e:
                     print(f"Schema upgrade skipped for FK {table.name}.{column.name}: {e}")
+
+
+def ensure_performance_indexes(bind=None):
+    """Indexes for the queries every visitor triggers (Home feed, Discover,
+    category counts). `IF NOT EXISTS`, so it is safe on every start; Postgres
+    only (other databases just skip it). Failure is logged, never fatal."""
+    bind = bind or engine
+    if bind.dialect.name != "postgresql":
+        return
+    statements = [
+        # the live feed: newest first among listings that are visible
+        "CREATE INDEX IF NOT EXISTS ix_properties_live_created ON properties (created_at DESC) WHERE is_removed = false AND is_available = true",
+        # rent/sale tabs and type/category counts
+        "CREATE INDEX IF NOT EXISTS ix_properties_live_listing_type ON properties (listing_type) WHERE is_removed = false AND is_available = true",
+        "CREATE INDEX IF NOT EXISTS ix_properties_live_type ON properties (property_type) WHERE is_removed = false AND is_available = true",
+        # a user's unread notifications (the bell asks every minute)
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user_created ON notifications (user_id, created_at DESC)",
+    ]
+    for stmt in statements:
+        try:
+            with bind.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception as e:  # noqa: BLE001
+            print(f"⚠️ Index notice: {e}")

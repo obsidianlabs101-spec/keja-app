@@ -13,7 +13,7 @@ from app.api.v1.catalog import public_router as catalog_public_router, admin_rou
 from app.core.config import settings
 from app.core.database import Base
 from app.core.database import engine
-from app.core.database import ensure_schema_upgrades
+from app.core.database import ensure_schema_upgrades, ensure_performance_indexes
 
 from app.models.notification import Notification
 
@@ -59,6 +59,11 @@ try:
 except Exception as e:
     print(f"⚠️ Schema upgrade notice: {e}")
     print(_boot_traceback.format_exc())
+
+try:
+    ensure_performance_indexes(engine)
+except Exception as e:
+    print(f"⚠️ Index notice: {e}")
 
 # First boot only: fill the admin-editable category/location tables with what
 # Keja shipped with, so existing listings and Home chips look exactly the same.
@@ -153,7 +158,13 @@ _CACHE_RULES = [
     (_re.compile(r"^/properties/locations$"), 300),
     (_re.compile(r"^/ads/[A-Za-z_]+$"), 120),
 ]
-_DROP_HEADERS = {"content-length", "date", "server"}
+_DROP_HEADERS = {"content-length", "date", "server", "content-encoding"}
+
+
+def _cache_key(request) -> str:
+    # Same parameters in a different order are the same question.
+    q = "&".join(sorted(p for p in request.url.query.split("&") if p))
+    return request.url.path + "?" + q
 
 
 @app.middleware("http")
@@ -172,11 +183,21 @@ async def response_cache(request, call_next):
     if not ttl:
         return await call_next(request)
 
-    key = path + "?" + request.url.query
-    hit = _ttl_cache.get(key)
-    if hit:
-        status, headers, body, media_type = hit
-        return _Response(content=body, status_code=status, headers=dict(headers), media_type=media_type)
+    key = _cache_key(request)
+    # Only our own in-process warmer may force a refresh (never a visitor).
+    force_refresh = request.headers.get("x-cache-refresh") == "1" and (
+        request.client is None or request.client.host in ("127.0.0.1", "::1")
+    )
+    if not force_refresh:
+        hit = _ttl_cache.get(key)
+        if hit:
+            fresh, status, headers, body, media_type = hit
+            if not fresh:
+                # Serve the slightly old copy right now; refresh it in the background.
+                import asyncio as _asyncio
+                from app.core import warmer as _warmer
+                _asyncio.create_task(_warmer.refresh_url(app, path + ("?" + request.url.query if request.url.query else "")))
+            return _Response(content=body, status_code=status, headers=dict(headers), media_type=media_type)
 
     response = await call_next(request)
     if response.status_code != 200:
@@ -185,6 +206,25 @@ async def response_cache(request, call_next):
     headers = {k: v for k, v in response.headers.items() if k.lower() not in _DROP_HEADERS and k.lower() != "content-type"}
     _ttl_cache.put(key, ttl, response.status_code, headers, body, response.media_type)
     return _Response(content=body, status_code=response.status_code, headers=headers, media_type=response.media_type)
+
+
+# Compress JSON responses: listings are text-heavy and many users are on mobile data.
+from starlette.middleware.gzip import GZipMiddleware as _GZipMiddleware
+app.add_middleware(_GZipMiddleware, minimum_size=800)
+
+
+@app.on_event("startup")
+async def _start_cache_warmer():
+    import asyncio as _asyncio
+    from app.core import warmer as _warmer
+    _asyncio.create_task(_warmer.warm_forever(app))
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
+def health():
+    """Cheap liveness check (no database). Point an uptime monitor here."""
+    return {"ok": True}
+
 
 # SECURITY: CORSMiddleware must be added last so it's genuinely outermost
 # — see the long comment this originally shipped with in Bash's main.py
