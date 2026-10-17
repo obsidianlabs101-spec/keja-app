@@ -25,6 +25,7 @@ import com.keja.app.ui.nav.KejaNavGraph
 import com.keja.app.ui.theme.KejaThemeStyle
 import com.keja.app.ui.theme.KejaTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
         AlertNotifier.ensureChannel(this)
         pendingRoute = intent?.getStringExtra(EXTRA_OPEN_ROUTE)
 
+        // Restore the saved login before the first frame (a quick read from the phone, no network).
+        kotlinx.coroutines.runBlocking { runCatching { AppContainer.repository(this@MainActivity).restoreSession() } }
+
         setContent {
             val context = this
             val repo = remember { AppContainer.repository(context) }
@@ -61,7 +65,8 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 val token = sessionStore.tokenFlow.first()
                 if (!token.isNullOrBlank()) {
-                    runCatching { repo.refreshMe() }
+                    // Fire-and-forget so slow networks never hold up the rest of startup.
+                    launch { repo.refreshMeQuietly() }
                     AlertsSync.schedulePeriodic(context)
                     AlertsSync.checkNow(context)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

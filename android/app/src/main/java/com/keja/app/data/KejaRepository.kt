@@ -5,6 +5,7 @@ import com.keja.app.data.model.*
 import com.keja.app.data.network.ApiClient
 import com.keja.app.data.network.KejaApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -16,7 +17,7 @@ import java.io.File
 
 /** Thrown with a message that's already the clean, user-facing string
  * (mirrors app.js's api() helper, which always throws Error(detail)). */
-class ApiException(message: String) : Exception(message)
+class ApiException(message: String, val code: Int = 0) : Exception(message)
 
 class KejaRepository(private val sessionStore: SessionStore) {
     private val api: KejaApi by lazy { ApiClient.get(sessionStore) }
@@ -25,10 +26,36 @@ class KejaRepository(private val sessionStore: SessionStore) {
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
+    /**
+     * Opens the app already signed in. The saved user is read from the phone BEFORE the first
+     * screen is drawn, so a slow or sleeping server (or no signal) can never make a signed-in
+     * person look logged out.
+     */
     suspend fun restoreSession() {
-        // userFlow is a Flow; take the latest snapshot once at startup.
-        // The UI re-fetches /users/me right after anyway, so this is
-        // just to avoid a flash of "logged out" while that call is in flight.
+        val token = sessionStore.currentToken()
+        if (token.isNullOrBlank()) return
+        val saved = sessionStore.userFlow.first()
+        if (saved != null && saved.id.isNotBlank()) _currentUser.value = saved
+    }
+
+    /**
+     * Re-checks the login in the background (and refreshes the profile). Only a definite
+     * "this token is not valid" answer from the server (HTTP 401: account removed, or "log out
+     * all devices" was used) ends the session. Timeouts, being offline or a server that is
+     * still waking up just retry — they never log anyone out.
+     */
+    suspend fun refreshMeQuietly() {
+        for (wait in listOf(0L, 4_000L, 12_000L)) {
+            if (wait > 0) kotlinx.coroutines.delay(wait)
+            try {
+                refreshMe()
+                return
+            } catch (e: ApiException) {
+                if (e.code == 401) { logout(); return }
+            } catch (e: Exception) {
+                // offline / timed out: keep the saved session and try again
+            }
+        }
     }
 
     fun setCurrentUser(user: User?) { _currentUser.value = user }
@@ -41,7 +68,7 @@ class KejaRepository(private val sessionStore: SessionStore) {
         val message = errorBody?.let {
             runCatching { gson.fromJson(it, ApiError::class.java) }.getOrNull()
         }?.let { it.detail ?: it.message }
-        throw ApiException(message ?: "Something went wrong (${response.code()})")
+        throw ApiException(message ?: "Something went wrong (${response.code()})", response.code())
     }
 
     suspend fun register(body: RegisterRequest) = unwrap(api.register(body))
