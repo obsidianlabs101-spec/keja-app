@@ -97,6 +97,9 @@ class HostVerificationResponse(BaseModel):
     full_name: str
     phone: Optional[str] = None
     host_verification_status: str
+    # Why an application was rejected (set by the admin). Shown only to the applicant
+    # via /users/host-verification/me, never in public profiles.
+    admin_note: Optional[str] = None
     verification_requested_at: Optional[str] = None
     verification_approved_at: Optional[str] = None
     government_id: Optional[str] = None

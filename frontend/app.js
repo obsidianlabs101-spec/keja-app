@@ -674,6 +674,10 @@ function landlord() {
         app.innerHTML = `<div class="empty locked"><div class="emoji">⏳</div><h3>Verification pending</h3><p class="muted">We're reviewing your landlord application. This usually takes a short while.</p></div>`;
       } else {
         renderBecomeLandlord();
+        if (status === "rejected") {
+          const why = v.admin_note ? ` Reason: <b>${escHtml(v.admin_note)}</b>.` : "";
+          app.insertAdjacentHTML("afterbegin", `<div class="note-banner" style="background:#FEE2E2;color:#7F1D1D;border:1px solid #FCA5A5;border-radius:14px;padding:12px 14px;margin:0 0 14px;font-size:14px"><b>Your landlord application wasn't approved.</b>${why} You can fix it and apply again below. Questions? Email <a href="mailto:obsidianlabs101@gmail.com">obsidianlabs101@gmail.com</a>.</div>`);
+        }
       }
     }).catch(() => renderBecomeLandlord());
     return;

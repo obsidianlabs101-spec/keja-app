@@ -40,7 +40,7 @@ def register(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail="Email already exists"
+            detail="An account with this email already exists. Try logging in instead."
         )
 
     # Usernames are permanent once created (host_dashboard/profile don't
@@ -53,6 +53,16 @@ def register(
             detail="Username already taken — pick another one"
         )
 
+    # The phone number is unique too. Without this check a reused number fell through to the
+    # database and came back as the confusing "Username or email already taken".
+    from app.models.user import User as _User
+    _phone = (user.phone or "").strip()
+    if _phone and db.query(_User).filter(_User.phone == _phone).first():
+        raise HTTPException(
+            status_code=400,
+            detail="That phone number is already registered to a Keja account. Log in instead, or use a different number."
+        )
+
     try:
         # If email sending isn't configured yet, verification is off and the
         # account works immediately (nobody gets locked out by a missing key).
@@ -62,7 +72,7 @@ def register(
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="Username or email already taken"
+            detail="That username, email or phone number is already taken"
         )
     
     if needs_verification:

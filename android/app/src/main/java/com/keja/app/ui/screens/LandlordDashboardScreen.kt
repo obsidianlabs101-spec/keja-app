@@ -58,6 +58,7 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
     val user by repo.currentUser.collectAsState()
 
     var verificationStatus by remember { mutableStateOf<String?>(null) }
+    var rejectionNote by remember { mutableStateOf<String?>(null) }
     var checked by remember { mutableStateOf(false) }
     var listings by remember { mutableStateOf<List<Property>>(emptyList()) }
     var stats by remember { mutableStateOf<LandlordStats?>(null) }
@@ -95,7 +96,9 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
         if (user?.is_host == true) {
             refresh()
         } else {
-            verificationStatus = runCatching { repo.hostVerificationStatus().host_verification_status }.getOrNull() ?: "none"
+            val st = runCatching { repo.hostVerificationStatus() }.getOrNull()
+            verificationStatus = st?.host_verification_status ?: "none"
+            rejectionNote = st?.admin_note
         }
         checked = true
     }
@@ -140,6 +143,16 @@ fun LandlordDashboardScreen(onBack: () -> Unit, onOpenPublicProfile: (String) ->
                     )
                 } else if (showBecomeForm) {
                     BecomeLandlordForm(onDone = { showBecomeForm = false; verificationStatus = "pending" })
+                } else if (verificationStatus == "rejected") {
+                    LandlordStatusCard(
+                        icon = Icons.Outlined.Home,
+                        title = "Application not approved",
+                        subtitle = (rejectionNote?.takeIf { it.isNotBlank() }?.let { "Reason: $it. " } ?: "") +
+                            "You can fix it and apply again. Questions? Email obsidianlabs101@gmail.com",
+                    ) {
+                        Spacer(Modifier.height(14.dp))
+                        KejaPrimaryButton(text = "Apply again", onClick = { showBecomeForm = true })
+                    }
                 } else {
                     LandlordStatusCard(
                         icon = Icons.Outlined.Home,

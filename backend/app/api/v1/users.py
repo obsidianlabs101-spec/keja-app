@@ -218,6 +218,7 @@ def get_my_verification_status(
         "full_name": current_user.full_name,
         "phone": current_user.phone,
         "host_verification_status": current_user.host_verification_status,
+        "admin_note": current_user.verification_admin_note if current_user.host_verification_status == "rejected" else None,
         "verification_requested_at": current_user.verification_requested_at.isoformat() if current_user.verification_requested_at else None,
         "verification_approved_at": current_user.verification_approved_at.isoformat() if current_user.verification_approved_at else None,
         "government_id": current_user.government_id,

@@ -220,6 +220,20 @@ async def _start_cache_warmer():
     _asyncio.create_task(_warmer.warm_forever(app))
 
 
+# Log the reason behind refusals (400/403/409/422/429) so "someone couldn't register"
+# can be traced from the logs. Only the status and the server's own message are
+# logged - never request bodies, passwords or tokens.
+from fastapi import HTTPException as _HTTPException
+from fastapi.exception_handlers import http_exception_handler as _default_http_handler
+
+
+@app.exception_handler(_HTTPException)
+async def _logged_http_exception(request, exc):
+    if exc.status_code in (400, 403, 409, 422, 429):
+        print(f"⚠️ REFUSED {request.method} {request.url.path} -> {exc.status_code}: {exc.detail}")
+    return await _default_http_handler(request, exc)
+
+
 @app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health():
     """Cheap liveness check (no database). Point an uptime monitor here."""

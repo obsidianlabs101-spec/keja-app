@@ -125,7 +125,7 @@ data class AdminStats(
 )
 
 data class HostVerificationRequest(val government_id: String, val phone: String)
-data class HostVerificationStatus(val host_verification_status: String?)
+data class HostVerificationStatus(val host_verification_status: String?, val admin_note: String? = null)
 
 data class ApiError(val detail: String? = null, val message: String? = null)
 
