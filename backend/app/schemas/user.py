@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import field_validator, BaseModel
 from pydantic import EmailStr
 
 
@@ -9,12 +9,22 @@ class UserRegister(BaseModel):
     username: str
     full_name: str
     email: EmailStr
-    phone: str
+    phone: Optional[str] = None
     password: str
     # Referral code from a shared link (index.html?ref=<code>) — if it
     # matches a real user, that user's free-events padlock lifts.
     ref: Optional[str] = None
-    
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def _blank_phone_is_none(cls, v):
+        # A blank phone must be stored as NULL, never "". The phone column is UNIQUE, so
+        # the first "" blocked every later sign-up that left the phone empty
+        # (surfacing as a bogus "username or email already taken").
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v or None
 
 
 class UserLogin(BaseModel):

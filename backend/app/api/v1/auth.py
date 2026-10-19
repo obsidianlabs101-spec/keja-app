@@ -68,12 +68,19 @@ def register(
         # account works immediately (nobody gets locked out by a missing key).
         needs_verification = mail_service.is_configured()
         new_user = create_user(db, user, pending_verification=needs_verification)
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="That username, email or phone number is already taken"
-        )
+        why = str(getattr(exc, "orig", exc)).lower()
+        print(f"⚠️ REGISTER integrity error: {why[:200]}")
+        if "phone" in why:
+            msg = "That phone number is already registered to a Keja account. Log in instead, or use a different number."
+        elif "email" in why:
+            msg = "An account with this email already exists. Try logging in instead."
+        elif "username" in why:
+            msg = "That username is already taken — pick another one."
+        else:
+            msg = "We couldn't create your account right now. Please try again in a minute."
+        raise HTTPException(status_code=400, detail=msg)
     
     if needs_verification:
         background_tasks.add_task(

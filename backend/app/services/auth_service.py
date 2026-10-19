@@ -224,7 +224,7 @@ def create_user(
         username=user.username,
         full_name=user.full_name,
         email=user.email,
-        phone=user.phone,
+        phone=(user.phone or None),
         password_hash=hash_password(
             user.password
         )
